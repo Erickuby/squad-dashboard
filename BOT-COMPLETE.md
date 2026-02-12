@@ -43,7 +43,26 @@ npm run bot-start
 - `scripts/start-bot-node.js` - Node.js runner
 - `scripts/start-bot.py` - Python runner
 - `run-bot.bat` - Windows batch runner
+- `scripts/sync-notion.js` - Notion sync script
 - `BOT-SYSTEM.md` - System documentation
 - `BOT-SETUP.md` - Setup guide
+- `NOTION-INTEGRATION.md` - Notion setup guide
 
-Full documentation in `squad-dashboard/BOT-SETUP.md`
+Full documentation in `squad-dashboard/BOT-SETUP.md` and `squad-dashboard/NOTION-INTEGRATION.md`
+
+## Notion Integration 🆕
+
+Completed tasks now auto-sync to Notion!
+
+**Setup:**
+1. Create Notion integration (see `NOTION-INTEGRATION.md`)
+2. Create Notion database
+3. Add environment variables to `.env.local`
+4. Install: `npm install @notionhq/client`
+5. Test: `node scripts/sync-notion.js setup`
+
+**How it works:**
+- Approve task → Auto-syncs to Notion
+- Creates Notion page with all details
+- "View in Notion" link appears in task detail
+- All comments and work preserved
