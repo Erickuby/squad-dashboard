@@ -1,9 +1,34 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { supabase } from '@/lib/supabase';
 
-// The squad-state.json is in the parent directory (workspace root)
 export async function GET() {
+  // Try Supabase first if configured
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('squad_state')
+        .select('state_data, updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        // Merge with updated_at from Supabase
+        const state = data.state_data;
+        state.lastUpdated = data.updated_at;
+        return NextResponse.json(state);
+      }
+    } catch (error) {
+      console.error('Error fetching from Supabase:', error);
+      // Fall through to local file
+    }
+  }
+
+  // Fall back to local file
   try {
     const statePath = path.join(process.cwd(), '..', 'squad-state.json');
     const stateData = fs.readFileSync(statePath, 'utf8');
@@ -11,7 +36,7 @@ export async function GET() {
     return NextResponse.json(state);
   } catch (error) {
     console.error('Error reading squad state:', error);
-    // Return mock data if file doesn't exist
+    // Return empty state as last resort
     return NextResponse.json({
       lastUpdated: new Date().toISOString(),
       members: {
