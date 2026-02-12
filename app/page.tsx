@@ -160,7 +160,7 @@ export default function Dashboard() {
                   <Users className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{Object.values(squadState.members).length}</div>
+                  <div className="text-2xl font-bold">{Object.keys(squadState.members).length}</div>
                   <div className="text-xs text-muted-foreground">Total Agents</div>
                 </div>
               </div>
