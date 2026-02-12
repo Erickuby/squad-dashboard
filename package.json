@@ -8,8 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "bot-poll": "node scripts/bot-poll.js",
-    "bot-start": "python scripts/start-bot.py",
-    "bot-start-win": "run-bot.bat"
+    "bot-start": "node scripts/start-bot-node.js",
+    "bot-start-win": "run-bot.bat",
+    "bot-start-py": "python scripts/start-bot.py"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
