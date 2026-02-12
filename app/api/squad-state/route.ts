@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // Version hash to force cache invalidation
-const VERSION = '2026-02-12-v4';
+const VERSION = '2026-02-12-v5';
 
 const AGENT_ROLES = {
   researcher: {
@@ -27,25 +27,24 @@ const AGENT_ROLES = {
     role: 'Growth Strategy & Distribution',
     emoji: '📈',
   },
+  manager: {
+    name: 'Manager',
+    role: 'Squad Lead',
+    emoji: '👑',
+  }
 };
 
 export async function GET() {
-  if (!supabase) {
-    // Fall back to local file
-    try {
-      const statePath = path.join(process.cwd(), '..', 'squad-state.json');
-      const stateData = fs.readFileSync(statePath, 'utf8');
-      const state = JSON.parse(stateData);
-      state.version = VERSION;
-      return NextResponse.json(state);
-    } catch (error) {
-      console.error('Error reading squad state:', error);
-      return NextResponse.json(
-        { error: 'Could not load squad state' },
-        { status: 500 }
-      );
-    }
+  // Initialize Supabase directly to ensure environment variables are picked up
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase Credentials in API');
+    return NextResponse.json({ error: 'Configuration Error: Missing Supabase Credentials' }, { status: 500 });
   }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     // Fetch all tasks from Supabase
@@ -78,8 +77,11 @@ export async function GET() {
     tasks?.forEach(task => {
       if (!task.assigned_agent) return;
 
-      const agent = task.assigned_agent;
-      const agentTasks = tasks.filter(t => t.assigned_agent === agent);
+      const agent = task.assigned_agent.toLowerCase();
+      // Ensure agent exists in our members map (handle case mismatch or extra agents)
+      if (!members[agent]) return;
+
+      const agentTasks = tasks.filter(t => t.assigned_agent?.toLowerCase() === agent);
 
       // Find active task (in_progress or waiting_approval)
       const activeTask = agentTasks.find(
@@ -109,17 +111,22 @@ export async function GET() {
         members[agent].taskId = activeTask.id;
         members[agent].startedAt = activeTask.started_at || activeTask.created_at;
       } else if (agentTasks.some(t => t.status === 'todo')) {
+        // Stick with available, but maybe indicate queued work?
+        // For now 'available' implies ready to work.
         members[agent].status = 'available';
       }
 
       // Collect activity from chat history
-      task.chat_history?.forEach((msg: any) => {
-        activityLog.push({
-          timestamp: msg.timestamp,
-          member: msg.author,
-          action: msg.message,
+      const history = typeof task.chat_history === 'string' ? JSON.parse(task.chat_history) : task.chat_history;
+      if (Array.isArray(history)) {
+        history.forEach((msg: any) => {
+          activityLog.push({
+            timestamp: msg.timestamp,
+            member: msg.author,
+            action: msg.message,
+          });
         });
-      });
+      }
     });
 
     // Sort activity log by timestamp, keep last 50
@@ -139,21 +146,11 @@ export async function GET() {
         'X-API-Version': VERSION,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching squad state:', error);
-
-    // Fall back to local file on error
-    try {
-      const statePath = path.join(process.cwd(), '..', 'squad-state.json');
-      const stateData = fs.readFileSync(statePath, 'utf8');
-      const state = JSON.parse(stateData);
-      return NextResponse.json(state);
-    } catch (fallbackError) {
-      console.error('Error reading fallback file:', fallbackError);
-      return NextResponse.json(
-        { error: 'Could not load squad state' },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json(
+      { error: 'Error calculating squad state', details: error.message },
+      { status: 500 }
+    );
   }
 }

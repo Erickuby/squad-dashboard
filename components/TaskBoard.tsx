@@ -367,8 +367,20 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                       </div>
                     )}
 
-                    <div className="text-gray-600 text-xs mt-2">
-                      {formatDate(task.updated_at)}
+                    <div className="text-gray-600 text-xs mt-2 flex justify-between items-center">
+                      <span>{formatDate(task.updated_at)}</span>
+                      {task.notion_page_url && (
+                        <a
+                          href={task.notion_page_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-blue-400 hover:text-blue-300 transition-colors p-1 hover:bg-blue-900/20 rounded"
+                          title="View in Notion"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
