@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, RefreshCw, AlertTriangle, Users, Calendar, Loader2, Menu } from 'lucide-react';
+import { Activity, RefreshCw, AlertTriangle, Users, Calendar, Loader2, Menu, LayoutGrid, Kanban } from 'lucide-react';
 import AgentCard from '@/components/AgentCard';
 import Sidebar from '@/components/Sidebar';
-import { SquadState, Agent } from '@/types/squad';
+import TaskBoard from '@/components/TaskBoard';
+import { SquadState } from '@/types/squad';
+
+type ViewMode = 'squad' | 'tasks';
 
 export default function Dashboard() {
   const [squadState, setSquadState] = useState<SquadState | null>(null);
@@ -13,7 +16,10 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [filter, setFilter] = useState<'all' | 'working' | 'available' | 'blocked' | 'review'>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('squad');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string>();
+  const [filterAgent, setFilterAgent] = useState<string>();
 
   // Initial fetch
   useEffect(() => {
@@ -108,7 +114,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(true)}
@@ -126,186 +132,240 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="hidden lg:flex items-center gap-3">
-              {/* Auto refresh toggle */}
-              <motion.button
-                onClick={() => setAutoRefresh(!autoRefresh)}
-                className={`p-3 rounded-xl glass-card ${autoRefresh ? 'bg-accent/20' : ''}`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Activity className={`w-5 h-5 ${autoRefresh ? 'text-accent animate-pulse' : 'text-muted-foreground'}`} />
-              </motion.button>
+            {/* View toggle */}
+            <div className="flex items-center gap-4">
+              {/* View mode toggle */}
+              <div className="flex items-center gap-2 bg-black/40 p-1 rounded-lg">
+                <button
+                  onClick={() => setViewMode('squad')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                    viewMode === 'squad' ? 'bg-accent text-black' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  <span className="text-sm font-medium">Squad</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('tasks')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                    viewMode === 'tasks' ? 'bg-accent text-black' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Kanban className="w-4 h-4" />
+                  <span className="text-sm font-medium">Task Board</span>
+                </button>
+              </div>
 
-              {/* Refresh button */}
-              <motion.button
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="p-3 rounded-xl glass-card"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </motion.button>
+              <div className="hidden lg:flex items-center gap-3">
+                {/* Auto refresh toggle */}
+                <motion.button
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  className={`p-3 rounded-xl glass-card ${autoRefresh ? 'bg-accent/20' : ''}`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Activity className={`w-5 h-5 ${autoRefresh ? 'text-accent animate-pulse' : 'text-muted-foreground'}`} />
+                </motion.button>
+
+                {/* Refresh button */}
+                <motion.button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="p-3 rounded-xl glass-card"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </motion.button>
+              </div>
             </div>
           </div>
 
-          {/* Stats row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 }}
-              className="stat-card"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-accent/20">
-                  <Users className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{Object.keys(squadState.members).length}</div>
-                  <div className="text-xs text-muted-foreground">Total Agents</div>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="stat-card"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-green-500/20">
-                  <Activity className="w-5 h-5 text-green-400" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{workingCount}</div>
-                  <div className="text-xs text-muted-foreground">Working Now</div>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 }}
-              className="stat-card"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${blockedCount > 0 ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
-                  <AlertTriangle className={`w-5 h-5 ${blockedCount > 0 ? 'text-red-400' : 'text-green-400'}`} />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{blockedCount}</div>
-                  <div className="text-xs text-muted-foreground">Blocked</div>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4 }}
-              className="stat-card"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-accent/20">
-                  <Calendar className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold">
-                    {new Date(squadState.lastUpdated).toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+          {/* Stats row - Only show in Squad view */}
+          {viewMode === 'squad' && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 }}
+                className="stat-card"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-accent/20">
+                    <Users className="w-5 h-5 text-accent" />
                   </div>
-                  <div className="text-xs text-muted-foreground">Last Update</div>
+                  <div>
+                    <div className="text-2xl font-bold">{Object.keys(squadState.members).length}</div>
+                    <div className="text-xs text-muted-foreground">Total Agents</div>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+                className="stat-card"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-500/20">
+                    <Activity className="w-5 h-5 text-green-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{workingCount}</div>
+                    <div className="text-xs text-muted-foreground">Working Now</div>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
+                className="stat-card"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${blockedCount > 0 ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
+                    <AlertTriangle className={`w-5 h-5 ${blockedCount > 0 ? 'text-red-400' : 'text-green-400'}`} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{blockedCount}</div>
+                    <div className="text-xs text-muted-foreground">Blocked</div>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.4 }}
+                className="stat-card"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-accent/20">
+                    <Calendar className="w-5 h-5 text-accent" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold">
+                      {new Date(squadState.lastUpdated).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Last Update</div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
         </motion.div>
 
-        {/* Blockers alert */}
-        <AnimatePresence>
-          {totalBlockers > 0 && (
+        {/* Content */}
+        <AnimatePresence mode="wait">
+          {viewMode === 'squad' ? (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20"
+              key="squad"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
-                <div>
-                  <div className="font-medium text-red-400">Active Blockers Detected</div>
-                  <div className="text-sm text-muted-foreground">
-                    {totalBlockers} blocker{totalBlockers !== 1 ? 's' : ''} need{totalBlockers === 1 ? 's' : ''} attention
+              {/* Blockers alert */}
+              <AnimatePresence>
+                {totalBlockers > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20"
+                  >
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="w-5 h-5 text-red-400" />
+                      <div>
+                        <div className="font-medium text-red-400">Active Blockers Detected</div>
+                        <div className="text-sm text-muted-foreground">
+                          {totalBlockers} blocker{totalBlockers !== 1 ? 's' : ''} need{totalBlockers === 1 ? 's' : ''} attention
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Agent grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredAgents.length > 0 ? (
+                  filteredAgents.map((agent, index) => (
+                    <AgentCard key={agent.name} agent={agent} index={index} />
+                  ))
+                ) : (
+                  <div className="col-span-2 text-center py-12">
+                    <p className="text-muted-foreground text-lg">
+                      No agents match the selected filter
+                    </p>
                   </div>
-                </div>
+                )}
               </div>
+
+              {/* Activity log */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="mt-8 glass-card"
+              >
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-accent">
+                  <Calendar className="w-5 h-5" />
+                  Recent Activity
+                </h2>
+                <div className="space-y-3">
+                  <AnimatePresence mode="popLayout">
+                    {squadState.activityLog.slice(-5).reverse().map((log, index) => (
+                      <motion.div
+                        key={log.timestamp}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="flex items-start gap-4 p-3 rounded-lg bg-black/60"
+                      >
+                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-accent to-yellow-600 flex items-center justify-center text-black text-lg font-bold">
+                          {log.member.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">{log.member}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(log.timestamp).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{log.action}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="tasks"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+              className="h-[calc(100vh-200px)]"
+            >
+              <TaskBoard
+                selectedProject={selectedProject}
+                filterAgent={filterAgent}
+              />
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Agent grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredAgents.length > 0 ? (
-            filteredAgents.map((agent, index) => (
-              <AgentCard key={agent.name} agent={agent} index={index} />
-            ))
-          ) : (
-            <div className="col-span-2 text-center py-12">
-              <p className="text-muted-foreground text-lg">
-                No agents match the selected filter
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Activity log */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-8 glass-card"
-        >
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-accent">
-            <Calendar className="w-5 h-5" />
-            Recent Activity
-          </h2>
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {squadState.activityLog.slice(-5).reverse().map((log, index) => (
-                <motion.div
-                  key={log.timestamp}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-4 p-3 rounded-lg bg-black/60"
-                >
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-accent to-yellow-600 flex items-center justify-center text-black text-lg font-bold">
-                    {log.member.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">{log.member}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(log.timestamp).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{log.action}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </motion.div>
       </div>
     </div>
   );

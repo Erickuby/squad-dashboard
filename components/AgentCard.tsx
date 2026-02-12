@@ -2,7 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { Activity, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Agent, AgentStatus } from '@/types/squad';
+import { SquadMember } from '@/types/squad';
+
+type AgentStatus = 'working' | 'available' | 'blocked' | 'review';
 
 const statusConfig = {
   available: {
@@ -36,7 +38,7 @@ const statusConfig = {
 };
 
 interface AgentCardProps {
-  agent: Agent;
+  agent: SquadMember;
   index: number;
 }
 
