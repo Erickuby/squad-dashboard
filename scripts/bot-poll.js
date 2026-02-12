@@ -24,6 +24,9 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Clawdbot API endpoint for spawning sessions
+const CLAWDBOT_API = 'http://localhost:11434';
+
 const AGENT_SYSTEM_PROMPTS = {
   researcher: {
     name: 'Researcher',
@@ -43,6 +46,12 @@ Process:
 2. Research using web search and content analysis
 3. Document your findings in comments
 4. Provide actionable insights (not just raw data)
+
+**CRITICAL: Progress Reporting Requirement**
+- You MUST add a progress comment EVERY 10 minutes
+- Report what you've found, what you're working on, or what's next
+- This keeps the task owner informed and shows you're actively working
+- Format: "Progress update [X/10 minutes]: [what you're doing]"
 
 Success criteria:
 - At least 3 concrete data points
@@ -75,6 +84,12 @@ Process:
 3. Build solution (code, workflow, or config)
 4. Test locally if possible
 5. Document your work
+
+**CRITICAL: Progress Reporting Requirement**
+- You MUST add a progress comment EVERY 10 minutes
+- Report what you're building, what progress you've made, or any issues
+- This keeps the task owner informed and shows you're actively working
+- Format: "Progress update [X/10 minutes]: [what you're building]"
 
 SOP Checklist (must complete before approval):
 - [ ] Solution meets requirements
@@ -115,6 +130,12 @@ Process:
 4. Iterate based on feedback
 5. Finalize
 
+**CRITICAL: Progress Reporting Requirement**
+- You MUST add a progress comment EVERY 10 minutes
+- Report what you're drafting, what ideas you're testing, or what's next
+- This keeps the task owner informed and shows you're actively working
+- Format: "Progress update [X/10 minutes]: [what you're writing]"
+
 SOP Checklist (must complete before approval):
 - [ ] Matches brand tone
 - [ ] Strong hook/opening
@@ -153,6 +174,12 @@ Process:
 3. Develop strategy or recommendations
 4. Document with timelines and KPIs
 5. Finalize
+
+**CRITICAL: Progress Reporting Requirement**
+- You MUST add a progress comment EVERY 10 minutes
+- Report what strategies you're developing, what data you're analyzing, or what's next
+- This keeps the task owner informed and shows you're actively working
+- Format: "Progress update [X/10 minutes]: [what you're working on]"
 
 Success criteria:
 - Data-driven recommendations
@@ -232,18 +259,35 @@ async function processTask(task, agentConfig) {
       const timeSinceStart = Date.now() - new Date(task.started_at).getTime();
       const minutesElapsed = Math.floor(timeSinceStart / 60000);
 
+      // Check for 10-minute progress updates
+      const lastAgentComment = [...task.chat_history]
+        .reverse()
+        .find(c => c.role === 'agent');
+
+      if (lastAgentComment) {
+        const lastCommentTime = new Date(lastAgentComment.timestamp).getTime();
+        const timeSinceLastProgress = (Date.now() - lastCommentTime) / 60000;
+
+        // If no progress for 15+ minutes, add warning
+        if (timeSinceLastProgress > 15) {
+          console.log(`      ⚠️  No progress for ${Math.round(timeSinceLastProgress)} min`);
+          await addTaskComment(task.id, 'System', 'system',
+            `⚠️ Warning: No progress for ${Math.round(timeSinceLastProgress)} minutes. Agent should report progress every 10 minutes.`
+          );
+        }
+      }
+
       // If task has been in progress > 30 min, check if agent finished
       if (minutesElapsed > 30) {
         console.log(`      ⏰ Task in progress for ${minutesElapsed} min, checking completion...`);
 
-        // For now, auto-move to waiting_approval if no recent comments
-        const lastComment = task.chat_history?.[task.chat_history.length - 1];
-        if (lastComment) {
-          const lastCommentTime = new Date(lastComment.timestamp).getTime();
+        // Auto-move to waiting_approval if no recent comments
+        if (lastAgentComment) {
+          const lastCommentTime = new Date(lastAgentComment.timestamp).getTime();
           const timeSinceLastComment = Date.now() - lastCommentTime;
 
           // If last comment was > 20 min ago from agent, move to approval
-          if (lastComment.role === 'agent' && timeSinceLastComment > 20 * 60000) {
+          if (timeSinceLastComment > 20 * 60000) {
             console.log(`      ✅ Auto-moving to waiting_approval`);
             await updateTaskStatus(task.id, 'waiting_approval', agentConfig);
           }
@@ -256,11 +300,12 @@ async function processTask(task, agentConfig) {
     if (task.status === 'todo') {
       console.log(`      🚀 Spawning ${agentConfig.name} to start task...`);
 
-      // For now, simulate agent work by adding a comment and updating status
-      // In real implementation, this would spawn a sessions_spawn call
+      // Update task to in_progress
       await updateTaskStatus(task.id, 'in_progress', agentConfig);
+
+      // Add initial comment
       await addTaskComment(task.id, agentConfig.name, 'agent',
-        `Started working on this task. Let me research/build/write...\n\nTask: ${task.title}\n\n${task.description || 'No description provided.'}`
+        `Started working on this task. Let me research/build/write...\n\nTask: ${task.title}\n\n${task.description || 'No description provided.'}\n\n📋 Remember: I will report progress every 10 minutes!`
       );
 
       console.log(`      ✅ ${agentConfig.name} started working`);
