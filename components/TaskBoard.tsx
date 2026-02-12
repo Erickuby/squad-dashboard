@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Task } from '@/types/squad';
+import { Task, Project } from '@/types/squad';
 import { supabase } from '@/lib/supabase';
+import { Plus, Filter, X } from 'lucide-react';
 
 interface TaskBoardProps {
   selectedProject?: string;
@@ -25,6 +26,15 @@ const AGENT_COLORS: Record<string, string> = {
   manager: 'bg-yellow-600',
 };
 
+const AGENT_OPTIONS = [
+  { value: '', label: 'All Agents' },
+  { value: 'researcher', label: 'Researcher' },
+  { value: 'builder', label: 'Builder' },
+  { value: 'copywriter', label: 'Copywriter' },
+  { value: 'marketer', label: 'Marketer' },
+  { value: 'manager', label: 'Manager' },
+];
+
 const PRIORITY_COLORS: Record<string, string> = {
   low: 'text-gray-400',
   normal: 'text-blue-400',
@@ -34,12 +44,27 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newComment, setNewComment] = useState('');
+  const [showNewTask, setShowNewTask] = useState(false);
+  const [filterProject, setFilterProject] = useState<string>('');
+  const [filterAgentLocal, setFilterAgentLocal] = useState<string>('');
+
+  // New task form state
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    assigned_agent: '',
+    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
+    project_id: '',
+    requires_approval: false,
+  });
 
   useEffect(() => {
     fetchTasks();
+    fetchProjects();
 
     // Subscribe to real-time updates
     if (supabase) {
@@ -55,7 +80,7 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
         supabase!.removeChannel(channel);
       };
     }
-  }, [selectedProject, filterAgent]);
+  }, [selectedProject, filterAgent, filterProject, filterAgentLocal]);
 
   async function fetchTasks() {
     if (!supabase) return;
@@ -66,12 +91,13 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (selectedProject) {
-        query = query.eq('project_id', selectedProject);
+      // Apply filters
+      if (selectedProject || filterProject) {
+        query = query.eq('project_id', selectedProject || filterProject);
       }
 
-      if (filterAgent) {
-        query = query.eq('assigned_agent', filterAgent);
+      if (filterAgent || filterAgentLocal) {
+        query = query.eq('assigned_agent', filterAgent || filterAgentLocal);
       }
 
       const { data, error } = await query;
@@ -81,6 +107,22 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
       console.error('Error fetching tasks:', error);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function fetchProjects() {
+    if (!supabase) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('status', 'active');
+
+      if (error) throw error;
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
     }
   }
 
@@ -169,6 +211,66 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
     }
   }
 
+  async function createTask(e: React.FormEvent) {
+    e.preventDefault();
+    if (!supabase) return;
+
+    try {
+      // Get SOP for agent
+      let checklist = [];
+      if (newTask.assigned_agent) {
+        const { data: sop } = await supabase
+          .from('sops')
+          .select('steps')
+          .eq('agent', newTask.assigned_agent)
+          .single();
+
+        if (sop) {
+          checklist = sop.steps.map((step: any) => ({
+            ...step,
+            completed: false,
+          }));
+        }
+      }
+
+      const { error } = await supabase.from('tasks').insert([{
+        title: newTask.title,
+        description: newTask.description,
+        status: 'todo',
+        assigned_agent: newTask.assigned_agent || null,
+        priority: newTask.priority,
+        project_id: newTask.project_id || null,
+        requires_approval: newTask.requires_approval,
+        checklist,
+        chat_history: [
+          {
+            author: 'eric',
+            role: 'human',
+            message: `Task created: ${newTask.title}`,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      }]);
+
+      if (error) throw error;
+
+      // Reset form
+      setNewTask({
+        title: '',
+        description: '',
+        assigned_agent: '',
+        priority: 'normal',
+        project_id: '',
+        requires_approval: false,
+      });
+      setShowNewTask(false);
+
+      fetchTasks();
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
+  }
+
   function getColumnTasks(status: string) {
     return tasks.filter(task => task.status === status);
   }
@@ -191,65 +293,112 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
   }
 
   return (
-    <div className="h-full overflow-hidden">
-      <div className="flex gap-4 overflow-x-auto pb-4 h-full">
-        {COLUMNS.map(column => (
-          <div
-            key={column.id}
-            className={`flex-shrink-0 w-80 bg-gray-900 border-t-4 ${column.color} rounded-lg p-4 flex flex-col`}
+    <div className="h-full flex flex-col">
+      {/* Header with filters */}
+      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+        {/* Project filter */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gray-400" />
+            <select
+              value={filterProject}
+              onChange={(e) => setFilterProject(e.target.value)}
+              className="bg-black/40 text-white px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-500 text-sm"
+            >
+              <option value="">All Projects</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Agent filter */}
+          <select
+            value={filterAgentLocal}
+            onChange={(e) => setFilterAgentLocal(e.target.value)}
+            className="bg-black/40 text-white px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-500 text-sm"
           >
-            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-              {column.label}
-              <span className="text-gray-400 text-sm">
-                ({getColumnTasks(column.id).length})
-              </span>
-            </h3>
+            {AGENT_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3">
-              {getColumnTasks(column.id).map(task => (
-                <div
-                  key={task.id}
-                  onClick={() => setSelectedTask(task)}
-                  className="bg-gray-800 p-3 rounded-lg cursor-pointer hover:bg-gray-750 transition-colors border border-gray-700"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-white font-medium text-sm line-clamp-2">
-                      {task.title}
-                    </h4>
-                    <span className={`text-xs font-semibold ${PRIORITY_COLORS[task.priority]}`}>
-                      {task.priority}
-                    </span>
-                  </div>
+        {/* New task button */}
+        <button
+          onClick={() => setShowNewTask(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/80 text-black font-medium rounded-lg transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Task</span>
+        </button>
+      </div>
 
-                  {task.assigned_agent && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-2 h-2 rounded-full ${AGENT_COLORS[task.assigned_agent]}`}></div>
-                      <span className="text-gray-400 text-xs capitalize">
-                        {task.assigned_agent}
+      {/* Task Board */}
+      <div className="flex-1 overflow-hidden">
+        <div className="flex gap-4 overflow-x-auto pb-4 h-full">
+          {COLUMNS.map(column => (
+            <div
+              key={column.id}
+              className={`flex-shrink-0 w-80 bg-gray-900 border-t-4 ${column.color} rounded-lg p-4 flex flex-col`}
+            >
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                {column.label}
+                <span className="text-gray-400 text-sm">
+                  ({getColumnTasks(column.id).length})
+                </span>
+              </h3>
+
+              <div className="flex-1 overflow-y-auto space-y-3">
+                {getColumnTasks(column.id).map(task => (
+                  <div
+                    key={task.id}
+                    onClick={() => setSelectedTask(task)}
+                    className="bg-gray-800 p-3 rounded-lg cursor-pointer hover:bg-gray-750 transition-colors border border-gray-700"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="text-white font-medium text-sm line-clamp-2">
+                        {task.title}
+                      </h4>
+                      <span className={`text-xs font-semibold ${PRIORITY_COLORS[task.priority]}`}>
+                        {task.priority}
                       </span>
                     </div>
-                  )}
 
-                  {task.chat_history.length > 0 && (
-                    <div className="text-gray-500 text-xs mb-2">
-                      {task.chat_history.length} comment{task.chat_history.length !== 1 ? 's' : ''}
+                    {task.assigned_agent && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-2 h-2 rounded-full ${AGENT_COLORS[task.assigned_agent]}`}></div>
+                        <span className="text-gray-400 text-xs capitalize">
+                          {task.assigned_agent}
+                        </span>
+                      </div>
+                    )}
+
+                    {task.chat_history.length > 0 && (
+                      <div className="text-gray-500 text-xs mb-2">
+                        {task.chat_history.length} comment{task.chat_history.length !== 1 ? 's' : ''}
+                      </div>
+                    )}
+
+                    {task.bounce_count > 0 && (
+                      <div className="text-red-400 text-xs">
+                        ⚠️ {task.bounce_count} bounce{task.bounce_count !== 1 ? 's' : ''}
+                      </div>
+                    )}
+
+                    <div className="text-gray-600 text-xs mt-2">
+                      {formatDate(task.updated_at)}
                     </div>
-                  )}
-
-                  {task.bounce_count > 0 && (
-                    <div className="text-red-400 text-xs">
-                      ⚠️ {task.bounce_count} bounce{task.bounce_count !== 1 ? 's' : ''}
-                    </div>
-                  )}
-
-                  <div className="text-gray-600 text-xs mt-2">
-                    {formatDate(task.updated_at)}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Task Detail Modal */}
@@ -263,7 +412,7 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                   onClick={() => setSelectedTask(null)}
                   className="text-gray-400 hover:text-white transition-colors"
                 >
-                  ✕
+                  <X className="w-6 h-6" />
                 </button>
               </div>
 
@@ -271,7 +420,7 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                 <p className="text-gray-300 mb-4">{selectedTask.description}</p>
               )}
 
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-4 text-sm flex-wrap">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400">Status:</span>
                   <span className="text-white capitalize">
@@ -362,7 +511,7 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                   <div>
                     <h4 className="text-white font-bold mb-1">Awaiting Your Approval</h4>
                     <p className="text-gray-400 text-sm">
-                      Review the work and approve to complete, or reject to send back
+                      Review work and approve to complete, or reject to send back
                     </p>
                   </div>
                   <div className="flex gap-3">
@@ -396,6 +545,133 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* New Task Modal */}
+      {showNewTask && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-gray-700">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-start justify-between mb-4">
+                <h2 className="text-white text-xl font-bold">Create New Task</h2>
+                <button
+                  onClick={() => setShowNewTask(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={createTask} className="space-y-4">
+                {/* Title */}
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Title *</label>
+                  <input
+                    type="text"
+                    value={newTask.title}
+                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                    placeholder="Task title"
+                    required
+                    className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Description</label>
+                  <textarea
+                    value={newTask.description}
+                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                    placeholder="Task description..."
+                    rows={3}
+                    className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-500 resize-none"
+                  />
+                </div>
+
+                {/* Project & Agent */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Project</label>
+                    <select
+                      value={newTask.project_id}
+                      onChange={(e) => setNewTask({ ...newTask, project_id: e.target.value })}
+                      className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-500"
+                    >
+                      <option value="">No project</option>
+                      {projects.map(project => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Assigned Agent</label>
+                    <select
+                      value={newTask.assigned_agent}
+                      onChange={(e) => setNewTask({ ...newTask, assigned_agent: e.target.value })}
+                      className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-500"
+                    >
+                      <option value="">Unassigned</option>
+                      {AGENT_OPTIONS.filter(a => a.value).map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Priority & Approval */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Priority</label>
+                    <select
+                      value={newTask.priority}
+                      onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })}
+                      className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-500"
+                    >
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center pt-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newTask.requires_approval}
+                        onChange={(e) => setNewTask({ ...newTask, requires_approval: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-700 focus:ring-yellow-500"
+                      />
+                      <span className="text-white">Requires Approval</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewTask(false)}
+                    className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-accent hover:bg-accent/80 text-black font-medium rounded-lg transition-colors"
+                  >
+                    Create Task
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

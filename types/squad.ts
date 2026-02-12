@@ -22,6 +22,18 @@ export interface Task {
   metadata: Record<string, any>;
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  status: 'active' | 'paused' | 'completed';
+  created_at: string;
+  updated_at: string;
+  manager_agent: string;
+  context_refs: string[];
+  metadata: Record<string, any>;
+}
+
 export interface ChatMessage {
   author: string;
   role: 'manager' | 'agent' | 'human';
