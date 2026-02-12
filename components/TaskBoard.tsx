@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Task, Project } from '@/types/squad';
 import { supabase } from '@/lib/supabase';
-import { Plus, Filter, X } from 'lucide-react';
+import { Plus, Filter, X, ExternalLink } from 'lucide-react';
 
 interface TaskBoardProps {
   selectedProject?: string;
@@ -167,6 +167,7 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
     if (!supabase) return;
 
     try {
+      // First update task to completed
       await supabase
         .from('tasks')
         .update({
@@ -176,6 +177,28 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
           updated_at: new Date().toISOString(),
         })
         .eq('id', taskId);
+
+      // Then sync to Notion
+      try {
+        const syncResponse = await fetch('/api/sync-notion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId }),
+        });
+
+        const syncResult = await syncResponse.json();
+
+        if (syncResult.success) {
+          console.log('✅ Task synced to Notion:', syncResult.pageUrl);
+          // Refresh tasks to show Notion link
+          await fetchTasks();
+        } else {
+          console.warn('⚠️  Notion sync failed:', syncResult.error);
+        }
+      } catch (syncError) {
+        console.warn('⚠️  Notion sync error:', syncError);
+        // Continue even if Notion sync fails
+      }
 
       setSelectedTask(null);
     } catch (error) {
@@ -446,6 +469,18 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                     {selectedTask.priority}
                   </span>
                 </div>
+
+                {selectedTask.notion_page_url && (
+                  <a
+                    href={selectedTask.notion_page_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>View in Notion</span>
+                  </a>
+                )}
               </div>
             </div>
 

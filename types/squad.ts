@@ -19,6 +19,8 @@ export interface Task {
   checklist: ChecklistItem[];
   context_refs: string[];
   tags: string[];
+  notion_page_id?: string;
+  notion_page_url?: string;
   metadata: Record<string, any>;
 }
 
