@@ -42,11 +42,14 @@ async function syncToSupabase() {
     let result;
 
     if (existingData && existingData.length > 0) {
-      // Update existing record
+      // Update existing record - force timestamp update
       console.log('🔄 Updating existing record in Supabase...');
       result = await supabase
         .from('squad_state')
-        .update({ state_data: state })
+        .update({
+          state_data: state,
+          updated_at: new Date().toISOString(), // Force timestamp update
+        })
         .eq('id', existingData[0].id)
         .select();
     } else {
