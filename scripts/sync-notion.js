@@ -5,7 +5,9 @@
  * Creates a Notion page with all task details, comments, and results.
  */
 
-require('dotenv').config({ path: '.env.local' });
+if (!process.env.NOTION_TOKEN) {
+  require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
+}
 const { Client } = require('@notionhq/client');
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
@@ -48,41 +50,8 @@ async function syncTaskToNotion(task) {
           ],
         },
 
-        // Status
-        Status: {
-          select: {
-            name: 'Completed',
-          },
-        },
-
-        // Agent
-        Agent: {
-          select: task.assigned_agent ? {
-            name: task.assigned_agent,
-          } : undefined,
-        },
-
-        // Priority
-        Priority: {
-          select: {
-            name: task.priority || 'Normal',
-          },
-        },
-
-        // Completed Date
-        'Completed Date': {
-          date: task.completed_at || new Date().toISOString(),
-        },
-
-        // Created Date
-        'Created Date': {
-          date: task.created_at,
-        },
-
-        // Bounce Count
-        'Bounce Count': {
-          number: task.bounce_count || 0,
-        },
+        // Minimizing properties to ensure successful sync regardless of user schema
+        // Only sending 'Name' which is standard. All other data goes to page content.
       },
     });
 
@@ -90,6 +59,79 @@ async function syncTaskToNotion(task) {
 
     // 2. Build page content with blocks
     const blocks = [];
+
+    // Add properties table at the top of the page content
+    const propertyRows = [
+      ['Status', task.status],
+      ['Agent', task.assigned_agent],
+      ['Priority', task.priority],
+      ['Completed', task.completed_at ? new Date(task.completed_at).toLocaleString() : 'N/A'],
+      ['Created', new Date(task.created_at).toLocaleString()],
+      ['Bounce Count', task.bounce_count || '0']
+    ].filter(([_, val]) => val); // Filter out empty values
+
+    blocks.push({
+      object: 'block',
+      type: 'heading_2',
+      heading_2: {
+        rich_text: [{ type: 'text', text: { content: '📊 Task Properties' } }]
+      }
+    });
+
+    // Create a code block or bullet list for properties since tables are complex to create via API
+    // (Using bullet list for simplicity and reliability)
+    for (const [key, value] of propertyRows) {
+      blocks.push({
+        object: 'block',
+        type: 'bulleted_list_item',
+        bulleted_list_item: {
+          rich_text: [
+            {
+              type: 'text',
+              text: {
+                content: `${key}: `,
+              },
+              annotations: { bold: true }
+            },
+            {
+              type: 'text',
+              text: { content: String(value) }
+            }
+          ]
+        }
+      });
+    }
+
+    blocks.push({ object: 'block', type: 'divider', divider: {} });
+
+    // ... (description block) ...
+    // Task metadata
+    // ...
+    // Add explicitly formatted metadata to body
+    const metadataText = [];
+    if (task.completed_at) metadataText.push(`Completed At: ${new Date(task.completed_at).toLocaleString()}`);
+    if (task.created_at) metadataText.push(`Created At: ${new Date(task.created_at).toLocaleString()}`);
+    if (task.bounce_count) metadataText.push(`Bounce Count: ${task.bounce_count}`);
+
+    if (metadataText.length > 0) {
+      blocks.push({
+        object: 'block',
+        type: 'paragraph',
+        paragraph: {
+          rich_text: [
+            {
+              type: 'text',
+              text: {
+                content: metadataText.join(' | '),
+              },
+              annotations: {
+                color: 'gray'
+              }
+            }
+          ]
+        }
+      });
+    }
 
     // Task description
     if (task.description) {
@@ -261,8 +303,8 @@ async function syncTaskToNotion(task) {
                 type: 'text',
                 text: {
                   content: `— ${new Date(comment.timestamp).toLocaleString('en-GB')}`,
-                  color: 'gray',
                 },
+                annotations: { color: 'gray' },
               },
             ],
           },
