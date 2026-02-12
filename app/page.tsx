@@ -19,7 +19,8 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchState = async () => {
       try {
-        const response = await fetch('/api/squad-state');
+        // Add timestamp to bust Vercel cache
+        const response = await fetch(`/api/squad-state?t=${Date.now()}`, { cache: 'no-store' });
         const data = await response.json();
         setSquadState(data);
       } catch (error) {
@@ -37,7 +38,8 @@ export default function Dashboard() {
 
     const fetchState = async () => {
       try {
-        const response = await fetch('/api/squad-state');
+        // Add timestamp to bust cache
+        const response = await fetch(`/api/squad-state?t=${Date.now()}`, { cache: 'no-store' });
         const data = await response.json();
         setSquadState(data);
       } catch (error) {
@@ -54,7 +56,8 @@ export default function Dashboard() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const response = await fetch('/api/squad-state', { cache: 'no-store' });
+      // Add timestamp to bust cache
+      const response = await fetch(`/api/squad-state?t=${Date.now()}`, { cache: 'no-store' });
       const data = await response.json();
       setSquadState(data);
     } catch (error) {

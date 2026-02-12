@@ -3,6 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import { supabase } from '@/lib/supabase';
 
+// Version hash to force cache invalidation
+const VERSION = '2026-02-12-v3';
+
 export async function GET() {
   // Try Supabase first if configured
   if (supabase) {
@@ -20,10 +23,12 @@ export async function GET() {
         // Merge with updated_at from Supabase
         const state = data.state_data;
         state.lastUpdated = data.updated_at;
+        state.version = VERSION;
         return NextResponse.json(state, {
           headers: {
-            'Cache-Control': 'no-store, max-age=0',
+            'Cache-Control': 'no-store, max-age=0, must-revalidate',
             'CDN-Cache-Control': 'no-store',
+            'X-API-Version': VERSION,
           },
         });
       }
