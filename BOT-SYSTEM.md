@@ -62,6 +62,27 @@ npm run bot-poll
 
 ### Run Continuously (Every 2 minutes)
 
+**Option 1 - Node.js version (recommended):**
+
+```bash
+cd squad-dashboard
+npm run bot-start
+```
+
+**Option 2 - Windows Batch file:**
+
+```bash
+cd squad-dashboard
+run-bot.bat
+```
+
+**Option 3 - Python version:**
+
+```bash
+cd squad-dashboard
+npm run bot-start-py
+```
+
 **Option 1: Using a cron job**
 
 ```bash
