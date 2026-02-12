@@ -98,7 +98,7 @@ export default function Dashboard() {
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
-      <div className="lg:ml-80 p-4 md:p-8">
+      <div className="lg:ml-80 min-h-screen p-4 md:p-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
