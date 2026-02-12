@@ -20,7 +20,12 @@ export async function GET() {
         // Merge with updated_at from Supabase
         const state = data.state_data;
         state.lastUpdated = data.updated_at;
-        return NextResponse.json(state);
+        return NextResponse.json(state, {
+          headers: {
+            'Cache-Control': 'no-store, max-age=0',
+            'CDN-Cache-Control': 'no-store',
+          },
+        });
       }
     } catch (error) {
       console.error('Error fetching from Supabase:', error);
