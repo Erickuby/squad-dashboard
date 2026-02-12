@@ -37,6 +37,14 @@ This guide will help you set up Supabase as the cloud backend for the squad dash
 5. Click "Save"
 6. Make `id` the Primary Key
 
+## Step 2.5: Disable Row Level Security (RLS)
+
+1. Go to "Authentication" → "Policies" in the left sidebar
+2. Find the `squad_state` table
+3. Click "Disable RLS" for this table
+
+**Why?** The dashboard needs to read and write without authentication since it's a simple tracking app with no sensitive data.
+
 ## Step 3: Get Your Credentials
 
 1. Go to "Project Settings" → "API"
@@ -96,9 +104,14 @@ Once Supabase is working locally, deploy to Netlify:
 - Check that `.env.local` exists with correct values
 - Check browser console for errors
 
+**Sync script fails with "violates row-level security policy":**
+- Go to Authentication → Policies → Find `squad_state` → Click "Disable RLS"
+- See Step 2.5 in setup guide above
+
 **Sync script fails:**
 - Make sure Supabase project is active
 - Check your API credentials
+- Make sure RLS is disabled for squad_state table
 
 **Data not updating:**
 - Make sure you're running the sync script after modifying `squad-state.json`
