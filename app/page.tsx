@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, RefreshCw, AlertTriangle, Users, Calendar, Loader2 } from 'lucide-react';
+import { Activity, RefreshCw, AlertTriangle, Users, Calendar, Loader2, Menu } from 'lucide-react';
 import AgentCard from '@/components/AgentCard';
+import Sidebar from '@/components/Sidebar';
 import { SquadState, Agent } from '@/types/squad';
 
 export default function Dashboard() {
@@ -11,6 +12,8 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'working' | 'available' | 'blocked' | 'review'>('all');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Initial fetch
   useEffect(() => {
@@ -61,9 +64,18 @@ export default function Dashboard() {
     }
   };
 
+  const getFilteredAgents = () => {
+    if (!squadState) return [];
+    const agents = Object.values(squadState.members);
+    if (filter === 'all') return agents;
+    return agents.filter(agent => agent.status === filter);
+  };
+
+  const filteredAgents = getFilteredAgents();
+
   if (isLoading || !squadState) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center lg:ml-80">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
           <p className="text-muted-foreground">Loading squad dashboard...</p>
@@ -72,14 +84,21 @@ export default function Dashboard() {
     );
   }
 
-  const agents: Agent[] = Object.values(squadState.members);
-  const workingCount = agents.filter(a => a.status === 'working').length;
-  const blockedCount = agents.filter(a => a.status === 'blocked').length;
-  const totalBlockers = agents.reduce((acc, a) => acc + a.blockers.length, 0);
+  const workingCount = Object.values(squadState.members).filter(a => a.status === 'working').length;
+  const blockedCount = Object.values(squadState.members).filter(a => a.status === 'blocked').length;
+  const totalBlockers = Object.values(squadState.members).reduce((acc, a) => acc + a.blockers.length, 0);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <Sidebar
+        currentFilter={filter}
+        onFilterChange={setFilter}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+      />
+      <div className="lg:ml-80 p-4 md:p-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -87,16 +106,24 @@ export default function Dashboard() {
           className="mb-8"
         >
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-2">
-                <span className="text-accent">Squad Dashboard</span>
-              </h1>
-              <p className="text-muted-foreground">
-                Real-time squad tracking & task management
-              </p>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-lg hover:bg-black/20"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <div>
+                <h1 className="text-4xl md:text-5xl font-bold mb-2">
+                  <span className="text-accent">Squad Dashboard</span>
+                </h1>
+                <p className="text-muted-foreground">
+                  Real-time squad tracking & task management
+                </p>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-3">
               {/* Auto refresh toggle */}
               <motion.button
                 onClick={() => setAutoRefresh(!autoRefresh)}
@@ -221,9 +248,17 @@ export default function Dashboard() {
 
         {/* Agent grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {agents.map((agent, index) => (
-            <AgentCard key={agent.name} agent={agent} index={index} />
-          ))}
+          {filteredAgents.length > 0 ? (
+            filteredAgents.map((agent, index) => (
+              <AgentCard key={agent.name} agent={agent} index={index} />
+            ))
+          ) : (
+            <div className="col-span-2 text-center py-12">
+              <p className="text-muted-foreground text-lg">
+                No agents match the selected filter
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Activity log */}
