@@ -3,28 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 3%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 4%;
-    --card-foreground: 0 0% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 217 32% 17%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 217 32% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 32% 17%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 217 32% 17%;
-    --input: 217 32% 17%;
-    --ring: 217 91% 60%;
-  }
-}
-
-@layer base {
   body {
     @apply bg-background text-foreground;
   }
@@ -32,7 +10,7 @@
 
 @layer utilities {
   .glass {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+    @apply bg-black/40 backdrop-blur-xl border border-border;
   }
 
   .glass-card {
@@ -40,7 +18,7 @@
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-accent via-yellow-400 to-yellow-500 bg-clip-text text-transparent;
   }
 
   .gradient-border {
@@ -53,10 +31,18 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+    background: linear-gradient(135deg, #FFD700, #FFD000, #FFC700);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-black font-semibold px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors;
+  }
+
+  .stat-card {
+    @apply bg-black/60 backdrop-blur border border-border rounded-xl p-4;
   }
 }

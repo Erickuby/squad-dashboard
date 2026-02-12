@@ -13,11 +13,11 @@ const statusConfig = {
     icon: <CheckCircle2 className="w-4 h-4 text-green-400" />,
   },
   working: {
-    color: 'from-blue-400 to-indigo-500',
-    bg: 'bg-blue-500/20',
+    color: 'from-accent to-yellow-600',
+    bg: 'bg-accent/20',
     emoji: '🧠',
     label: 'Working',
-    icon: <Activity className="w-4 h-4 text-blue-400 animate-pulse" />,
+    icon: <Activity className="w-4 h-4 text-accent animate-pulse" />,
   },
   blocked: {
     color: 'from-red-400 to-rose-500',
@@ -27,11 +27,11 @@ const statusConfig = {
     icon: <AlertCircle className="w-4 h-4 text-red-400" />,
   },
   review: {
-    color: 'from-yellow-400 to-orange-500',
-    bg: 'bg-yellow-500/20',
+    color: 'from-orange-400 to-orange-600',
+    bg: 'bg-orange-500/20',
     emoji: '🤔',
     label: 'Review',
-    icon: <Clock className="w-4 h-4 text-yellow-400" />,
+    icon: <Clock className="w-4 h-4 text-orange-400" />,
   },
 };
 

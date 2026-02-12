@@ -10,8 +10,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "#121212",
+        foreground: "#FFFFFF",
+        'muted-foreground': "#E0E0E0",
+        accent: {
+          DEFAULT: "#FFD700",
+          hover: "#FFD000",
+        },
+        border: "#333333",
+        card: "#000000",
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -25,8 +32,8 @@ const config: Config = {
           '50%': { transform: 'translateY(-10px)' },
         },
         glow: {
-          '0%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.5)' },
-          '100%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.8), 0 0 40px rgba(59, 130, 246, 0.4)' },
+          '0%': { boxShadow: '0 0 5px rgba(255, 215, 0, 0.5)' },
+          '100%': { boxShadow: '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4)' },
         },
       },
     },

@@ -63,9 +63,9 @@ export default function Dashboard() {
 
   if (isLoading || !squadState) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-400 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
           <p className="text-muted-foreground">Loading squad dashboard...</p>
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function Dashboard() {
   const totalBlockers = agents.reduce((acc, a) => acc + a.blockers.length, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 md:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -89,7 +89,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-4xl md:text-5xl font-bold mb-2">
-                <span className="gradient-text">Squad Dashboard</span>
+                <span className="text-accent">Squad Dashboard</span>
               </h1>
               <p className="text-muted-foreground">
                 Real-time squad tracking & task management
@@ -100,11 +100,11 @@ export default function Dashboard() {
               {/* Auto refresh toggle */}
               <motion.button
                 onClick={() => setAutoRefresh(!autoRefresh)}
-                className={`p-3 rounded-xl glass-card ${autoRefresh ? 'bg-blue-500/20' : ''}`}
+                className={`p-3 rounded-xl glass-card ${autoRefresh ? 'bg-accent/20' : ''}`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Activity className={`w-5 h-5 ${autoRefresh ? 'text-blue-400 animate-pulse' : 'text-muted-foreground'}`} />
+                <Activity className={`w-5 h-5 ${autoRefresh ? 'text-accent animate-pulse' : 'text-muted-foreground'}`} />
               </motion.button>
 
               {/* Refresh button */}
@@ -126,11 +126,11 @@ export default function Dashboard() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.1 }}
-              className="glass-card"
+              className="stat-card"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-500/20">
-                  <Users className="w-5 h-5 text-blue-400" />
+                <div className="p-2 rounded-lg bg-accent/20">
+                  <Users className="w-5 h-5 text-accent" />
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{agents.length}</div>
@@ -143,7 +143,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
-              className="glass-card"
+              className="stat-card"
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-green-500/20">
@@ -160,7 +160,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3 }}
-              className="glass-card"
+              className="stat-card"
             >
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${blockedCount > 0 ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
@@ -177,11 +177,11 @@ export default function Dashboard() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.4 }}
-              className="glass-card"
+              className="stat-card"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-purple-500/20">
-                  <Calendar className="w-5 h-5 text-purple-400" />
+                <div className="p-2 rounded-lg bg-accent/20">
+                  <Calendar className="w-5 h-5 text-accent" />
                 </div>
                 <div>
                   <div className="text-sm font-bold">
@@ -233,7 +233,7 @@ export default function Dashboard() {
           transition={{ delay: 0.5 }}
           className="mt-8 glass-card"
         >
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-accent">
             <Calendar className="w-5 h-5" />
             Recent Activity
           </h2>
@@ -246,9 +246,9 @@ export default function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-4 p-3 rounded-lg bg-white/5"
+                  className="flex items-start gap-4 p-3 rounded-lg bg-black/60"
                 >
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-lg font-bold">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-accent to-yellow-600 flex items-center justify-center text-black text-lg font-bold">
                     {log.member.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
