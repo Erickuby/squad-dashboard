@@ -10,7 +10,8 @@
     "bot-poll": "node scripts/bot-poll.js",
     "bot-start": "node scripts/start-bot-node.js",
     "bot-start-win": "run-bot.bat",
-    "bot-start-py": "python scripts/start-bot.py"
+    "bot-start-py": "python scripts/start-bot.py",
+    "auto-complete": "node scripts/run-auto-complete.js"
   },
   "dependencies": {
     "@notionhq/client": "^2.3.0",
