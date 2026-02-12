@@ -2,6 +2,8 @@
 
 A sleek, animated web app for real-time squad tracking and task management.
 
+**GitHub:** https://github.com/Erickuby/squad-dashboard
+
 ## Features
 
 - 🎨 **Beautiful UI**: Modern dark theme with gradient accents and glass morphism effects
@@ -26,7 +28,51 @@ A sleek, animated web app for real-time squad tracking and task management.
 3. **Copywriter** ✍️ - Sales Copy & Hooks
 4. **Marketer** 📈 - Growth Strategy & Distribution
 
-## Getting Started
+## Deployment
+
+This dashboard is configured for Netlify deployment:
+
+### Deploy to Netlify
+
+**Option 1: Automatic Deploy from GitHub**
+1. Go to https://app.netlify.com
+2. Click "Add new site" → "Import an existing project"
+3. Select `Erickuby/squad-dashboard` from GitHub
+4. Build settings are pre-configured in `netlify.toml`
+5. Deploy!
+
+**Option 2: Manual Deploy**
+```bash
+# Install Netlify CLI
+npm install -g netlify-cli
+
+# Login to Netlify
+netlify login
+
+# Build and deploy
+npm run build
+netlify deploy --prod
+```
+
+### Important: Squad State Integration
+
+**Local Development:**
+The dashboard reads from `../squad-state.json` (parent directory) when running locally. Just run `npm run dev` and it will automatically sync with your workspace.
+
+**Netlify Deployment:**
+Since Netlify runs in the cloud, it cannot access your local `squad-state.json`. For cloud deployment, you have two options:
+
+**Option 1: Use a Cloud Backend (Recommended)**
+Set up a cloud API endpoint that serves the squad state:
+1. Deploy a simple API endpoint (could be a Vercel function, AWS Lambda, or similar)
+2. Update `app/api/squad-state/route.ts` to fetch from that endpoint instead of reading the local file
+
+**Option 2: Use a Database**
+Replace the JSON file with a database (Supabase, Firebase, etc.) and update the API route accordingly.
+
+**For now:** The dashboard works perfectly for local development. Cloud deployment requires a backend service to serve the squad state.
+
+## Local Development
 
 ```bash
 # Install dependencies
@@ -46,27 +92,19 @@ npm run build
 npm start
 ```
 
-## Integration with Squad State
+## How the Dashboard Integrates
 
-The dashboard currently uses mock data. To connect it to your real squad state:
+The dashboard reads from your workspace's `squad-state.json` file:
 
-1. Create an API route at `app/api/squad-state/route.ts`
-2. Read from your `squad-state.json` file
-3. Update the frontend to fetch from `/api/squad-state`
-
-Example API route:
-
-```typescript
-import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-
-export async function GET() {
-  const statePath = path.join(process.cwd(), '..', 'squad-state.json');
-  const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-  return NextResponse.json(state);
-}
 ```
+workspace/
+├── squad-dashboard/          # This repo
+├── squad-state.json         # State file (shared)
+└── scripts/
+    └── update-squad-dashboard.js
+```
+
+When you update `squad-state.json` in your workspace, the dashboard automatically reflects the changes (with auto-refresh enabled).
 
 ## Tech Stack
 
@@ -87,11 +125,10 @@ Animations are defined in `tailwind.config.ts` and components can be customized 
 ### Agent Cards
 Modify `components/AgentCard.tsx` to change how agents are displayed or add more information.
 
-## Future Enhancements
+## License
 
-- [ ] Connect to real squad-state.json file
-- [ ] Add task creation/assignment UI
-- [ ] Implement drag-and-drop task reordering
-- [ ] Add notifications for important events
-- [ ] Mobile app version
-- [ ] Export activity log
+MIT
+
+---
+
+**Made with ❤️ for the Squad**
