@@ -21,7 +21,7 @@ const notion = new Client({ auth: NOTION_TOKEN });
 /**
  * Sync a completed task to Notion
  * @param {Object} task - Task object from Supabase
- * @returns {Promise<string>} Notion page ID
+ * @returns {Promise<{success: boolean, pageId?: string, pageUrl?: string, message?: string, error?: string}>} Result object
  */
 async function syncTaskToNotion(task) {
   if (!NOTION_TOKEN || !NOTION_DATABASE_ID) {
