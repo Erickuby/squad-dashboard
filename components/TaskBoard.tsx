@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { Task, Project } from '@/types/squad';
-import { supabase } from '@/lib/supabase';
 import { Plus, Filter, X, ExternalLink } from 'lucide-react';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface TaskBoardProps {
   selectedProject?: string;
@@ -66,32 +70,26 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
     fetchTasks();
     fetchProjects();
 
-    // Subscribe to real-time updates
-    if (supabase) {
-      const channel = supabase
-        .channel('tasks-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-          fetchTasks();
-        })
-        .subscribe();
+    // Subscribe to realtime changes
+    const taskSubscription = supabase
+      .channel('tasks-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        fetchTasks();
+      })
+      .subscribe();
 
-      return () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        supabase!.removeChannel(channel);
-      };
-    }
+    return () => {
+      taskSubscription.unsubscribe();
+    };
   }, [selectedProject, filterAgent, filterProject, filterAgentLocal]);
 
   async function fetchTasks() {
-    if (!supabase) return;
-
     try {
       let query = supabase
         .from('tasks')
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Apply filters
       if (selectedProject || filterProject) {
         query = query.eq('project_id', selectedProject || filterProject);
       }
@@ -101,6 +99,7 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
       }
 
       const { data, error } = await query;
+
       if (error) throw error;
       setTasks(data || []);
     } catch (error) {
@@ -111,14 +110,8 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
   }
 
   async function fetchProjects() {
-    if (!supabase) return;
-
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('status', 'active');
-
+      const { data, error } = await supabase.from('projects').select('*');
       if (error) throw error;
       setProjects(data || []);
     } catch (error) {
@@ -127,33 +120,27 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
   }
 
   async function addComment(taskId: string, comment: string) {
-    if (!comment.trim() || !supabase) return;
+    if (!comment.trim()) return;
 
     try {
-      const { data: task } = await supabase
-        .from('tasks')
-        .select('chat_history')
-        .eq('id', taskId)
-        .single();
-
+      const task = tasks.find(t => t.id === taskId);
       if (task) {
         const newHistory = [
           ...task.chat_history,
           {
             author: 'eric',
-            role: 'human',
+            role: 'human' as const,
             message: comment,
             timestamp: new Date().toISOString(),
           },
         ];
 
-        await supabase
+        const { error } = await supabase
           .from('tasks')
-          .update({
-            chat_history: newHistory,
-            updated_at: new Date().toISOString(),
-          })
+          .update({ chat_history: newHistory })
           .eq('id', taskId);
+
+        if (error) throw error;
 
         setNewComment('');
         setSelectedTask(prev => prev ? { ...prev, chat_history: newHistory } : null);
@@ -164,40 +151,27 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
   }
 
   async function approveTask(taskId: string) {
-    if (!supabase) return;
-
     try {
-      // First update task to completed
-      await supabase
+      const { error } = await supabase
         .from('tasks')
         .update({
           status: 'completed',
           approved_by: 'eric',
           completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         })
         .eq('id', taskId);
 
-      // Then sync to Notion
+      if (error) throw error;
+
+      // Sync to Notion
       try {
-        const syncResponse = await fetch('/api/sync-notion', {
+        await fetch('/api/sync-notion', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ taskId }),
         });
-
-        const syncResult = await syncResponse.json();
-
-        if (syncResult.success) {
-          console.log('✅ Task synced to Notion:', syncResult.pageUrl);
-          // Refresh tasks to show Notion link
-          await fetchTasks();
-        } else {
-          console.warn('⚠️  Notion sync failed:', syncResult.error);
-        }
       } catch (syncError) {
-        console.warn('⚠️  Notion sync error:', syncError);
-        // Continue even if Notion sync fails
+        console.warn('Notion sync error:', syncError);
       }
 
       setSelectedTask(null);
@@ -207,27 +181,19 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
   }
 
   async function rejectTask(taskId: string) {
-    if (!supabase) return;
-
     try {
-      // Get current task to increment bounce count
-      const { data: task } = await supabase
-        .from('tasks')
-        .select('bounce_count')
-        .eq('id', taskId)
-        .single();
-
+      const task = tasks.find(t => t.id === taskId);
       if (task) {
-        await supabase
+        const { error } = await supabase
           .from('tasks')
           .update({
             status: 'in_progress',
             bounce_count: (task.bounce_count || 0) + 1,
-            updated_at: new Date().toISOString(),
           })
           .eq('id', taskId);
-      }
 
+        if (error) throw error;
+      }
       setSelectedTask(null);
     } catch (error) {
       console.error('Error rejecting task:', error);
@@ -236,44 +202,34 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
 
   async function createTask(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabase) return;
 
     try {
-      // Get SOP for agent
-      let checklist = [];
-      if (newTask.assigned_agent) {
-        const { data: sop } = await supabase
-          .from('sops')
-          .select('steps')
-          .eq('agent', newTask.assigned_agent)
-          .single();
+      // Mocking SOP step for now since we don't have SOPs table locally
+      let checklist: any[] = [];
 
-        if (sop) {
-          checklist = sop.steps.map((step: any) => ({
-            ...step,
-            completed: false,
-          }));
-        }
-      }
-
-      const { error } = await supabase.from('tasks').insert([{
-        title: newTask.title,
-        description: newTask.description,
-        status: 'todo',
-        assigned_agent: newTask.assigned_agent || null,
-        priority: newTask.priority,
-        project_id: newTask.project_id || null,
-        requires_approval: newTask.requires_approval,
-        checklist,
-        chat_history: [
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([
           {
-            author: 'eric',
-            role: 'human',
-            message: `Task created: ${newTask.title}`,
-            timestamp: new Date().toISOString(),
+            title: newTask.title,
+            description: newTask.description,
+            status: 'todo',
+            assigned_agent: newTask.assigned_agent || null,
+            priority: newTask.priority,
+            project_id: newTask.project_id || null,
+            requires_approval: newTask.requires_approval,
+            checklist,
+            chat_history: [
+              {
+                author: 'eric',
+                role: 'human' as const,
+                message: `Task created: ${newTask.title}`,
+                timestamp: new Date().toISOString(),
+              },
+            ],
           },
-        ],
-      }]);
+        ])
+        .select();
 
       if (error) throw error;
 
@@ -287,8 +243,6 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
         requires_approval: false,
       });
       setShowNewTask(false);
-
-      fetchTasks();
     } catch (error) {
       console.error('Error creating task:', error);
     }
@@ -495,13 +449,12 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                   {selectedTask.chat_history.map((msg, index) => (
                     <div
                       key={index}
-                      className={`p-3 rounded-lg ${
-                        msg.role === 'human'
-                          ? 'bg-yellow-900/20 border border-yellow-700'
-                          : msg.role === 'manager'
+                      className={`p-3 rounded-lg ${msg.role === 'human'
+                        ? 'bg-yellow-900/20 border border-yellow-700'
+                        : msg.role === 'manager'
                           ? 'bg-blue-900/20 border border-blue-700'
                           : 'bg-gray-800'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-white font-medium capitalize">

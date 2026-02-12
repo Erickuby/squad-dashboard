@@ -11,10 +11,9 @@ const { Client } = require('@notionhq/client');
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
+// Credentials check moved to function execution to prevent server crash on import
 if (!NOTION_TOKEN || !NOTION_DATABASE_ID) {
-  console.error('❌ Error: Notion credentials not found in .env.local');
-  console.log('Required: NOTION_TOKEN, NOTION_DATABASE_ID');
-  process.exit(1);
+  console.warn('⚠️  Warning: Notion credentials not found in .env.local (Sync will fail)');
 }
 
 const notion = new Client({ auth: NOTION_TOKEN });
@@ -25,6 +24,9 @@ const notion = new Client({ auth: NOTION_TOKEN });
  * @returns {Promise<string>} Notion page ID
  */
 async function syncTaskToNotion(task) {
+  if (!NOTION_TOKEN || !NOTION_DATABASE_ID) {
+    return { success: false, message: 'Missing Notion Credentials' };
+  }
   console.log(`📝 Syncing task "${task.title}" to Notion...\n`);
 
   try {
@@ -196,7 +198,7 @@ async function syncTaskToNotion(task) {
               text: {
                 content: `Project ID: ${task.project_id}`,
               },
-          },
+            },
           ],
         },
       });

@@ -1,22 +1,11 @@
-/**
- * API endpoint to sync completed tasks to Notion
- *
- * POST /api/sync-notion
- * Body: { taskId: string }
- * Returns: { success: boolean, pageId?: string, pageUrl?: string, error?: string }
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { syncTaskToNotion } from '../../scripts/sync-notion';
+// @ts-ignore
+import { syncTaskToNotion } from '../../../scripts/sync-notion';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase credentials');
-}
-
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request: NextRequest) {
@@ -26,67 +15,70 @@ export async function POST(request: NextRequest) {
 
     if (!taskId) {
       return NextResponse.json(
-        { success: false, error: 'taskId is required' },
+        { success: false, error: 'Task ID is required' },
         { status: 400 }
       );
     }
 
-    console.log(`[API] Syncing task ${taskId} to Notion...`);
+    console.log(`[Sync-Notion] Syncing task ${taskId}...`);
 
-    // Fetch task from Supabase
+    // 1. Fetch Task from Supabase
     const { data: task, error: fetchError } = await supabase
       .from('tasks')
       .select('*')
       .eq('id', taskId)
       .single();
 
-    if (fetchError) {
-      console.error('[API] Error fetching task:', fetchError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to fetch task' },
-        { status: 500 }
-      );
-    }
-
-    if (!task) {
+    if (fetchError || !task) {
+      console.error(`[Sync-Notion] Task ${taskId} not found in Supabase`, fetchError);
       return NextResponse.json(
         { success: false, error: 'Task not found' },
         { status: 404 }
       );
     }
 
-    // Sync to Notion
-    const result = await syncTaskToNotion(task);
+    // 2. Sync to Notion
+    try {
+      // syncTaskToNotion returns object with success, pageId, pageUrl
+      const result = await syncTaskToNotion(task);
 
-    if (!result.success) {
-      console.error('[API] Notion sync failed:', result.error);
+      if (!result.success) {
+        throw new Error(result.error || 'Sync failed');
+      }
+
+      console.log(`[Sync-Notion] Successfully synced to Notion: ${result.pageId}`);
+
+      // 3. Update Task with Notion URL/ID
+      // Check if not already updated to avoid redundancy
+      if (task.notion_page_id !== result.pageId) {
+        const { error: updateError } = await supabase
+          .from('tasks')
+          .update({
+            notion_page_id: result.pageId,
+            notion_page_url: result.pageUrl,
+          })
+          .eq('id', taskId);
+
+        if (updateError) {
+          console.error('[Sync-Notion] Failed to update task with Notion ID:', updateError);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        pageId: result.pageId,
+        pageUrl: result.pageUrl,
+        message: 'Task synced successfully',
+      });
+    } catch (syncError) {
+      console.error('[Sync-Notion] Sync failed:', syncError);
       return NextResponse.json(
-        { success: false, error: result.message || 'Failed to sync to Notion' },
+        { success: false, error: 'Failed to sync to Notion: ' + syncError },
         { status: 500 }
       );
     }
-
-    console.log(`[API] Task synced to Notion: ${result.pageId}`);
-
-    // Update task with Notion page ID
-    await supabase
-      .from('tasks')
-      .update({
-        notion_page_id: result.pageId,
-        notion_page_url: result.pageUrl,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', taskId);
-
-    return NextResponse.json({
-      success: true,
-      pageId: result.pageId,
-      pageUrl: result.pageUrl,
-      message: 'Task synced to Notion successfully',
-    });
-
   } catch (error) {
-    console.error('[API] Error in sync-notion:', error);
+    console.error('[Sync-Notion] Internal error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

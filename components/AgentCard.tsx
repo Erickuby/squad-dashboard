@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Activity, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { SquadMember } from '@/types/squad';
 
-type AgentStatus = 'working' | 'available' | 'blocked' | 'review';
+type AgentStatus = 'working' | 'available' | 'blocked' | 'review' | 'waiting_approval';
 
 const statusConfig = {
   available: {
@@ -35,6 +35,13 @@ const statusConfig = {
     label: 'Review',
     icon: <Clock className="w-4 h-4 text-orange-400" />,
   },
+  waiting_approval: {
+    color: 'from-yellow-400 to-amber-500',
+    bg: 'bg-yellow-500/20',
+    emoji: '⏳',
+    label: 'Waiting Approval',
+    icon: <Clock className="w-4 h-4 text-amber-400" />,
+  },
 };
 
 interface AgentCardProps {
@@ -43,7 +50,7 @@ interface AgentCardProps {
 }
 
 export default function AgentCard({ agent, index }: AgentCardProps) {
-  const config = statusConfig[agent.status];
+  const config = statusConfig[agent.status as keyof typeof statusConfig] || statusConfig.available;
 
   return (
     <motion.div
