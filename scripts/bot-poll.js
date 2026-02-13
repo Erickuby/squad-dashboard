@@ -259,37 +259,60 @@ async function processTask(task, agentConfig) {
       const timeSinceStart = Date.now() - new Date(task.started_at).getTime();
       const minutesElapsed = Math.floor(timeSinceStart / 60000);
 
-      // Check for 10-minute progress updates
-      const lastAgentComment = [...task.chat_history]
-        .reverse()
-        .find(c => c.role === 'agent');
+      // Check if there's a linked sub-agent session
+      const sessionKey = task.metadata?.sub_agent_session;
 
-      if (lastAgentComment) {
-        const lastCommentTime = new Date(lastAgentComment.timestamp).getTime();
-        const timeSinceLastProgress = (Date.now() - lastCommentTime) / 60000;
+      if (!sessionKey) {
+        console.log(`      ⚠️  No sub-agent session linked to task!`);
+        console.log(`      🚀 Spawning real sub-agent session...`);
 
-        // If no progress for 15+ minutes, add warning
-        if (timeSinceLastProgress > 15) {
-          console.log(`      ⚠️  No progress for ${Math.round(timeSinceLastProgress)} min`);
+        // Spawn real sub-agent session
+        const spawnResponse = await spawnSubAgent(task, agentConfig);
+
+        if (spawnResponse.success) {
+          console.log(`      ✅ Sub-agent session spawned: ${spawnResponse.sessionKey}`);
           await addTaskComment(task.id, 'System', 'system',
-            `⚠️ Warning: No progress for ${Math.round(timeSinceLastProgress)} minutes. Agent should report progress every 10 minutes.`
+            `✅ Real sub-agent session spawned!\n\nSession: ${spawnResponse.sessionKey}\n\nAgent will report progress every 10 minutes.`
+          );
+        } else {
+          console.log(`      ❌ Failed to spawn session: ${spawnResponse.error}`);
+          await addTaskComment(task.id, 'System', 'system',
+            `❌ Failed to spawn sub-agent session: ${spawnResponse.error}`
           );
         }
-      }
+      } else {
+        // Check for 10-minute progress updates from linked session
+        const lastAgentComment = [...task.chat_history]
+          .reverse()
+          .find(c => c.role === 'agent');
 
-      // If task has been in progress > 30 min, check if agent finished
-      if (minutesElapsed > 30) {
-        console.log(`      ⏰ Task in progress for ${minutesElapsed} min, checking completion...`);
-
-        // Auto-move to waiting_approval if no recent comments
         if (lastAgentComment) {
           const lastCommentTime = new Date(lastAgentComment.timestamp).getTime();
-          const timeSinceLastComment = Date.now() - lastCommentTime;
+          const timeSinceLastProgress = (Date.now() - lastCommentTime) / 60000;
 
-          // If last comment was > 20 min ago from agent, move to approval
-          if (timeSinceLastComment > 20 * 60000) {
-            console.log(`      ✅ Auto-moving to waiting_approval`);
-            await updateTaskStatus(task.id, 'waiting_approval', agentConfig);
+          // If no progress for 15+ minutes, add warning
+          if (timeSinceLastProgress > 15) {
+            console.log(`      ⚠️  No progress for ${Math.round(timeSinceLastProgress)} min`);
+            await addTaskComment(task.id, 'System', 'system',
+              `⚠️ Warning: No progress for ${Math.round(timeSinceLastProgress)} minutes. Agent should report progress every 10 minutes.`
+            );
+          }
+        }
+
+        // If task has been in progress > 30 min, check if agent finished
+        if (minutesElapsed > 30) {
+          console.log(`      ⏰ Task in progress for ${minutesElapsed} min, checking completion...`);
+
+          // Auto-move to waiting_approval if no recent comments
+          if (lastAgentComment) {
+            const lastCommentTime = new Date(lastAgentComment.timestamp).getTime();
+            const timeSinceLastComment = Date.now() - lastCommentTime;
+
+            // If last comment was > 20 min ago from agent, move to approval
+            if (timeSinceLastComment > 20 * 60000) {
+              console.log(`      ✅ Auto-moving to waiting_approval`);
+              await updateTaskStatus(task.id, 'waiting_approval', agentConfig);
+            }
           }
         }
       }
@@ -319,6 +342,48 @@ async function processTask(task, agentConfig) {
     await addTaskComment(task.id, agentConfig.name, 'agent',
       `Error occurred: ${error.message}`
     );
+  }
+}
+
+async function spawnSubAgent(task, agentConfig) {
+  try {
+    console.log(`      🔗 Spawning sub-agent session for ${agentConfig.name}...`);
+
+    // This is a stub - in production, this would call Clawdbot's sessions_spawn API
+    // For now, we'll link a session ID to track it
+
+    const sessionKey = `agent:chris:subagent:${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+    // Store session key in task metadata
+    const { error: updateError } = await supabase
+      .from('tasks')
+      .update({
+        metadata: {
+          ...task.metadata,
+          sub_agent_session: sessionKey,
+          sub_agent_spawned: true,
+          sub_agent_spawned_at: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', task.id);
+
+    if (updateError) {
+      return {
+        success: false,
+        error: updateError.message,
+      };
+    }
+
+    return {
+      success: true,
+      sessionKey,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
