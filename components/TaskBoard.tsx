@@ -152,6 +152,9 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
 
   async function approveTask(taskId: string) {
     try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
       const { error } = await supabase
         .from('tasks')
         .update({
@@ -165,38 +168,60 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
 
       // Sync to Notion
       try {
-        await fetch('/api/sync-notion', {
+        const syncResponse = await fetch('/api/sync-notion', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ taskId }),
         });
+
+        if (syncResponse.ok) {
+          console.log('Task synced to Notion successfully');
+        } else {
+          console.warn('Notion sync returned non-OK status');
+        }
       } catch (syncError) {
         console.warn('Notion sync error:', syncError);
       }
 
+      alert(`✅ Task "${task.title}" approved!`);
       setSelectedTask(null);
     } catch (error) {
       console.error('Error approving task:', error);
+      alert('❌ Error approving task. Please try again.');
     }
   }
 
-  async function rejectTask(taskId: string) {
+  async function rejectTask(taskId: string, feedback?: string) {
     try {
       const task = tasks.find(t => t.id === taskId);
       if (task) {
+        const newHistory = [
+          ...task.chat_history,
+          {
+            author: 'eric',
+            role: 'human' as const,
+            message: `❌ Task rejected. ${feedback || 'Please review and revise.'}`,
+            timestamp: new Date().toISOString(),
+          },
+        ];
+
         const { error } = await supabase
           .from('tasks')
           .update({
             status: 'in_progress',
             bounce_count: (task.bounce_count || 0) + 1,
+            chat_history: newHistory,
           })
           .eq('id', taskId);
 
         if (error) throw error;
+
+        alert(`❌ Task "${task.title}" rejected. Agent will revise the work.`);
       }
       setSelectedTask(null);
     } catch (error) {
       console.error('Error rejecting task:', error);
+      alert('❌ Error rejecting task. Please try again.');
     }
   }
 
@@ -338,10 +363,10 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                     className="bg-gray-800 p-3 rounded-lg cursor-pointer hover:bg-gray-750 transition-colors border border-gray-700"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="text-white font-medium text-sm line-clamp-2">
+                      <h4 className="text-white font-medium text-sm line-clamp-2 flex-1">
                         {task.title}
                       </h4>
-                      <span className={`text-xs font-semibold ${PRIORITY_COLORS[task.priority]}`}>
+                      <span className={`text-xs font-semibold ${PRIORITY_COLORS[task.priority]} ml-2`}>
                         {task.priority}
                       </span>
                     </div>
@@ -362,8 +387,32 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                     )}
 
                     {task.bounce_count > 0 && (
-                      <div className="text-red-400 text-xs">
+                      <div className="text-red-400 text-xs mb-2">
                         ⚠️ {task.bounce_count} bounce{task.bounce_count !== 1 ? 's' : ''}
+                      </div>
+                    )}
+
+                    {/* Quick approve/reject buttons for waiting_approval tasks */}
+                    {task.status === 'waiting_approval' && (
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            rejectTask(task.id);
+                          }}
+                          className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            approveTask(task.id);
+                          }}
+                          className="flex-1 px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors"
+                        >
+                          Approve
+                        </button>
                       </div>
                     )}
 
@@ -452,7 +501,12 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
 
             {/* Comment Thread */}
             <div className="flex-1 overflow-y-auto p-6">
-              <h3 className="text-white font-bold mb-4">Comments</h3>
+              <h3 className="text-white font-bold mb-4 flex items-center justify-between">
+                <span>Comments & Work</span>
+                <span className="text-gray-400 text-sm font-normal">
+                  {selectedTask.chat_history.length} message{selectedTask.chat_history.length !== 1 ? 's' : ''}
+                </span>
+              </h3>
 
               {selectedTask.chat_history.length === 0 ? (
                 <div className="text-gray-500 text-center py-8">No comments yet</div>
@@ -463,9 +517,11 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                       key={index}
                       className={`p-3 rounded-lg ${msg.role === 'human'
                         ? 'bg-yellow-900/20 border border-yellow-700'
-                        : msg.role === 'manager'
-                          ? 'bg-blue-900/20 border border-blue-700'
-                          : 'bg-gray-800'
+                        : msg.role === 'system'
+                          ? 'bg-purple-900/20 border border-purple-700'
+                          : msg.role === 'manager'
+                            ? 'bg-blue-900/20 border border-blue-700'
+                            : 'bg-gray-800'
                         }`}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -477,7 +533,7 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                           {formatDate(msg.timestamp)}
                         </span>
                       </div>
-                      <p className="text-gray-300 text-sm whitespace-pre-wrap">
+                      <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
                         {msg.message}
                       </p>
                     </div>
@@ -507,16 +563,27 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
             {/* Approval Actions */}
             {selectedTask.status === 'waiting_approval' && (
               <div className="p-6 border-t border-gray-700 bg-yellow-900/20">
+                <div className="mb-4">
+                  <h4 className="text-white font-bold mb-1">🎉 Task Complete - Ready for Your Review</h4>
+                  <p className="text-gray-400 text-sm">
+                    Click the task title above to review the full work. Approve to complete or reject with feedback to send back.
+                  </p>
+                </div>
+                <div className="mb-4">
+                  <textarea
+                    placeholder="Add feedback if rejecting (optional)..."
+                    className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-500 resize-none"
+                    rows={2}
+                    id="reject-feedback"
+                  />
+                </div>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-white font-bold mb-1">Awaiting Your Approval</h4>
-                    <p className="text-gray-400 text-sm">
-                      Review work and approve to complete, or reject to send back
-                    </p>
-                  </div>
                   <div className="flex gap-3">
                     <button
-                      onClick={() => rejectTask(selectedTask.id)}
+                      onClick={() => {
+                        const feedback = (document.getElementById('reject-feedback') as HTMLTextAreaElement)?.value;
+                        rejectTask(selectedTask.id, feedback);
+                      }}
                       className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
                     >
                       Reject
@@ -525,9 +592,12 @@ export default function TaskBoard({ selectedProject, filterAgent }: TaskBoardPro
                       onClick={() => approveTask(selectedTask.id)}
                       className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
                     >
-                      Approve
+                      ✅ Approve
                     </button>
                   </div>
+                  <span className="text-gray-400 text-xs">
+                    Approving will sync to Notion ✨
+                  </span>
                 </div>
               </div>
             )}
