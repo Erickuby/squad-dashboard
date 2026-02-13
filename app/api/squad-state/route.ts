@@ -4,7 +4,7 @@ import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 
 // Version hash to force cache invalidation
-const VERSION = '2026-02-12-v5';
+const VERSION = '2026-02-13-v6';
 
 const AGENT_ROLES = {
   researcher: {
@@ -83,6 +83,10 @@ export async function GET() {
 
       const agentTasks = tasks.filter(t => t.assigned_agent?.toLowerCase() === agent);
 
+      // DEBUG: Log task processing
+      console.log(`[DEBUG] Processing task: ${task.id} - "${task.title.substring(0, 50)}..."`);
+      console.log(`[DEBUG]   Agent: ${agent}, Status: ${task.status}`);
+
       // Find active task (in_progress or waiting_approval)
       const activeTask = agentTasks.find(
         t => t.status === 'in_progress' || t.status === 'waiting_approval'
@@ -101,6 +105,7 @@ export async function GET() {
         members[agent].blockers = blockedTask.status === 'failed'
           ? ['Task failed, needs intervention']
           : ['Task stuck in loop, needs intervention'];
+        console.log(`[DEBUG] Agent ${agent} status set to: blocked`);
       } else if (activeTask) {
         if (activeTask.status === 'waiting_approval') {
           members[agent].status = 'review';
@@ -110,10 +115,12 @@ export async function GET() {
         members[agent].currentTask = activeTask.title;
         members[agent].taskId = activeTask.id;
         members[agent].startedAt = activeTask.started_at || activeTask.created_at;
+        console.log(`[DEBUG] Agent ${agent} status set to: ${members[agent].status}`);
       } else if (agentTasks.some(t => t.status === 'todo')) {
         // Stick with available, but maybe indicate queued work?
         // For now 'available' implies ready to work.
         members[agent].status = 'available';
+        console.log(`[DEBUG] Agent ${agent} status set to: available`);
       }
 
       // Collect activity from chat history
