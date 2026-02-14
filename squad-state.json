@@ -1,0 +1,110 @@
+{
+  "lastUpdated": "2026-02-14T11:13:00Z",
+  "members": {
+    "researcher": {
+      "name": "Researcher",
+      "role": "Deep Dives & Viral Hunting",
+      "emoji": "🧪",
+      "status": "idle",
+      "currentTask": null,
+      "taskId": null,
+      "startedAt": null,
+      "eta": null,
+      "blockers": [],
+      "sessionKey": null
+    },
+    "builder": {
+      "name": "Builder",
+      "role": "n8n Workflows & Coding",
+      "emoji": "⚡",
+      "status": "idle",
+      "currentTask": null,
+      "taskId": null,
+      "startedAt": null,
+      "eta": null,
+      "blockers": [],
+      "sessionKey": null
+    },
+    "copywriter": {
+      "name": "Copywriter",
+      "role": "Sales Copy & Hooks",
+      "emoji": "✍️",
+      "status": "idle",
+      "currentTask": null,
+      "taskId": null,
+      "startedAt": null,
+      "eta": null,
+      "blockers": [],
+      "sessionKey": null
+    },
+    "marketer": {
+      "name": "Marketer",
+      "role": "Growth Strategy & Distribution",
+      "emoji": "📈",
+      "status": "idle",
+      "currentTask": null,
+      "taskId": null,
+      "startedAt": null,
+      "eta": null,
+      "blockers": [],
+      "sessionKey": null
+    }
+  },
+  "activityLog": [
+    {
+      "timestamp": "2026-02-14T11:13:00Z",
+      "member": "Chris",
+      "action": "Cleared all stale assignments - all squad members set to idle"
+    },
+    {
+      "timestamp": "2026-02-12T16:10:58.818Z",
+      "member": "System",
+      "action": "Auto-completed \"Do a Market Researcher to find the best Affiliate Product to Promote Currently\" for Marketer (Inactive > 311m)"
+    },
+    {
+      "timestamp": "2026-02-12T16:10:58.818Z",
+      "member": "System",
+      "action": "Auto-completed \"Write 10 hooks for YouTube shorts in trending topics in my niche\" for Copywriter (Inactive > 317m)"
+    },
+    {
+      "timestamp": "2026-02-12T16:10:58.818Z",
+      "member": "System",
+      "action": "Auto-completed \"Analyze competitor videos\" for Researcher (Inactive > 317m)"
+    },
+    {
+      "timestamp": "2026-02-12T16:10:58.818Z",
+      "member": "System",
+      "action": "Auto-completed \"Build YouTube analytics dashboard\" for Builder (Inactive > 317m)"
+    },
+    {
+      "timestamp": "2026-02-12T16:10:58.818Z",
+      "member": "System",
+      "action": "Auto-completed \"Research viral YouTube shorts\" for Researcher (Inactive > 344m)"
+    },
+    {
+      "timestamp": "2026-02-12T14:33:54.867Z",
+      "member": "System",
+      "action": "Auto-completed \"Building automated LinkedIn post scheduling workflow in n8n\" for Builder (Inactive > 378m)"
+    },
+    {
+      "timestamp": "2026-02-12T14:33:54.867Z",
+      "member": "System",
+      "action": "Auto-completed \"Researching top-performing AI productivity LinkedIn posts for 2026\" for Researcher (Inactive > 363m)"
+    },
+    {
+      "timestamp": "2026-02-12T08:30:00Z",
+      "member": "Chris",
+      "action": "Assigned task-001 to Researcher: Research viral LinkedIn posts"
+    },
+    {
+      "timestamp": "2026-02-12T08:15:00Z",
+      "member": "Chris",
+      "action": "Assigned task-002 to Builder: Build n8n workflow"
+    },
+    {
+      "timestamp": "2026-02-12T08:00:00Z",
+      "member": "Chris",
+      "action": "Assigned task-003 to Copywriter: Review AI hooks"
+    }
+  ]
+}
