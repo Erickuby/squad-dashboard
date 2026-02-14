@@ -1,0 +1,61 @@
+[
+  {
+    "title": "Comprehensive Prompt Engineering Research for BTNE Community",
+    "description": "Research and create an A-Z guide on Prompt Engineering for The Black Tech Community (BTNE).\n\nThis is a high-demand topic from the BTNE community, and there's currently no comprehensive resource available.\n\n**Research Requirements:**\n\n1. **Prompt Engineering Fundamentals**\n   - What is prompt engineering?\n   - Why it matters in 2025/2026\n   - Key concepts and terminology\n   - Real-world examples and case studies\n\n2. **BTNE Community Context**\n   - Current skill levels and experience\n   - Common challenges BTNE members face\n   - Technical backgrounds (vs non-technical roles)\n   - Learning goals and career paths\n\n3. **Best Practices & Patterns**\n   - Structure of effective prompts\n   - Do's and Don'ts of prompting\n   - Common pitfalls to avoid\n   - Advanced techniques (few-shot, chain-of-thought, etc.)\n\n4. **Tools & Platforms**\n   - AI tools that work best with prompt engineering\n   - Platform-specific optimizations (ChatGPT, Claude, etc.)\n   - Custom prompts vs. system prompts\n\n5. **Practical Applications for BTNE**\n   - Coding and technical tasks\n   - Resume and career advancement\n   - Learning new technologies\n   - Day-to-day productivity boosters\n   - Problem-solving workflows\n\n6. **A-Z Guide Structure**\n   - Organized from beginner to advanced\n   - Code examples and templates\n   - Step-by-step tutorials\n   - Real-world scenarios BTNE members relate to\n\n**Deliverables:**\n\n- Comprehensive A-Z guide (10,000+ words)\n- Code snippets and examples\n- Templates for common scenarios\n- Case studies from BTNE community\n- Quick-reference cheat sheet\n- Recommended AI tools for BTNE professionals\n\n**Success Criteria:**\n\n- Covers fundamentals to advanced topics\n- BTNE-relevant examples throughout\n- Practical, actionable advice\n- Clear structure (A-Z or categorized)\n- Includes 10+ code examples\n- Cites sources and references",
+    "status": "todo",
+    "assigned_agent": "researcher",
+    "priority": "urgent",
+    "requires_approval": true,
+    "tags": [
+      "btne",
+      "prompt-engineering",
+      "research",
+      "a-z-guide"
+    ],
+    "id": "task-1770928654183",
+    "created_at": "2026-02-12T20:37:34.183Z",
+    "updated_at": "2026-02-12T20:37:34.183Z",
+    "chat_history": [],
+    "bounce_count": 0
+  },
+  {
+    "id": "task-001",
+    "title": "Researching top-performing AI productivity LinkedIn posts for 2026",
+    "description": "Deep dive into viral trends to identify high-leverage content opportunities.",
+    "status": "completed",
+    "assigned_agent": "researcher",
+    "priority": "high",
+    "created_at": "2026-02-12T08:30:00Z",
+    "updated_at": "2026-02-12T15:46:32.296Z",
+    "chat_history": [],
+    "bounce_count": 0,
+    "approved_by": "eric",
+    "completed_at": "2026-02-12T15:46:32.283Z"
+  },
+  {
+    "id": "task-002",
+    "title": "Building automated LinkedIn post scheduling workflow in n8n",
+    "description": "Constructing the n8n workflow to automate scheduling and posting.",
+    "status": "completed",
+    "assigned_agent": "builder",
+    "priority": "normal",
+    "created_at": "2026-02-12T08:15:00Z",
+    "updated_at": "2026-02-12T15:49:44.702Z",
+    "chat_history": [],
+    "bounce_count": 0,
+    "approved_by": "eric",
+    "completed_at": "2026-02-12T15:49:44.693Z"
+  },
+  {
+    "id": "task-003",
+    "title": "Reviewing and refining hooks for 'AI Tools That Actually Save Time'",
+    "description": "Optimizing headlines and hooks for maximum click-through rate.",
+    "status": "in_progress",
+    "assigned_agent": "copywriter",
+    "priority": "urgent",
+    "created_at": "2026-02-12T08:00:00Z",
+    "updated_at": "2026-02-12T08:00:00Z",
+    "chat_history": [],
+    "bounce_count": 0
+  }
+]
