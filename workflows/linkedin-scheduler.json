@@ -1,0 +1,627 @@
+{
+  "name": "LinkedIn Post Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linkedin-schedule",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "linkedin-scheduler-webhook"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/linkedin-schedule",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "posts",
+              "value": "={{$json.posts}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "schedule-dispatch",
+      "name": "Schedule Dispatch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 100]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "manualInput": "{\"content\":\"Your post content here\",\"scheduledTime\":\"2024-12-31T10:00:00Z\",\"platform\":\"linkedin\"}"
+      },
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process incoming data and normalize format\nconst items = [];\n\n// Check if input is a single post or array of posts\nlet inputPosts;\nif ($input.all().length > 1) {\n  // Multiple items coming in\n  inputPosts = $input.all();\n} else {\n  // Check body for posts array or single post\n  const body = $input.first().json.body || $input.first().json;\n  if (body.posts) {\n    inputPosts = Array.isArray(body.posts) ? body.posts : [body.posts];\n  } else {\n    inputPosts = [body];\n  }\n}\n\n// Process each post\nfor (const post of inputPosts) {\n  const postData = typeof post === 'string' ? JSON.parse(post) : post;\n  \n  items.push({\n    json: {\n      content: postData.content || $json.content,\n      scheduledTime: postData.scheduledTime || $json.scheduledTime,\n      platform: postData.platform || 'linkedin',\n      postId: postData.postId || `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,\n      status: 'pending',\n      attempts: 0,\n      createdAt: new Date().toISOString(),\n      metadata: postData.metadata || {}\n    }\n  });\n}\n\nreturn items;"
+      },
+      "id": "normalize-input",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "equals",
+              "value2": "pending"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "id": "filter-pending",
+      "name": "Filter Pending Posts",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "hours"
+      },
+      "id": "wait-for-schedule",
+      "name": "Wait For Schedule",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [800, 300],
+      "notesInFlow": true,
+      "notes": "Check if scheduled time has arrived"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if it's time to post\nconst scheduledTime = new Date($json.scheduledTime);\nconst now = new Date();\nconst timeDiff = scheduledTime - now;\n\nif (timeDiff <= 0) {\n  // Time to post\n  return $input.all();\n}\n\n// Not time yet, wait\n// Wait in milliseconds, cap at 1 hour to prevent long waits\nconst waitTime = Math.min(timeDiff, 3600000); // Max 1 hour\n\n// Update status to waiting\n$json.status = 'waiting';\n$json.nextCheck = new Date(now.getTime() + waitTime).toISOString();\n\nreturn [{ json: $json }];"
+      },
+      "id": "check-schedule",
+      "name": "Check Schedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "equals",
+              "value2": "waiting"
+            }
+          ]
+        }
+      },
+      "id": "waiting-check",
+      "name": "Is Waiting?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "posts",
+        "options": {}
+      },
+      "id": "split-posts",
+      "name": "Split Posts",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [1400, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare LinkedIn API request body\nconst content = $json.content;\nconst postId = $json.postId;\n\n// LinkedIn UGC post format\nconst linkedInBody = {\n  author: $env.LINKEDIN_PERSON_URN,\n  lifecycleState: \"PUBLISHED\",\n  specificContent: {\n    \"com.linkedin.ugc.ShareContent\": {\n      shareCommentary: {\n        text: content\n      },\n      shareMediaCategory: \"NONE\"\n    }\n  },\n  visibility: {\n    \"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\"\n  }\n};\n\n// Add image if provided in metadata\nif ($json.metadata.imageUrl) {\n  linkedInBody.specificContent[\"com.linkedin.ugc.ShareContent\"].shareMediaCategory = \"IMAGE\";\n  linkedInBody.specificContent[\"com.linkedin.ugc.ShareContent\"].media = [\n    {\n      status: \"READY\",\n      description: {\n        text: $json.metadata.imageAlt || \"Post image\"\n      },\n      media: $env.LINKEDIN_ASSET_URN || \"urn:li:digitalmediaAsset:\" + $json.metadata.assetId\n    }\n  ];\n}\n\n// Store original data for error handling\nlinkedInBody._originalData = $json;\n\nreturn [{ json: linkedInBody }];"
+      },
+      "id": "prepare-linkedin-request",
+      "name": "Prepare LinkedIn Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linkedInOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "author",
+              "value": "={{$json.author}}"
+            },
+            {
+              "name": "lifecycleState",
+              "value": "={{$json.lifecycleState}}"
+            }
+          ]
+        },
+        "specifyBody": "json",
+        "jsonBody": "={{JSON.stringify($json, null, 2)}}",
+        "options": {}
+      },
+      "id": "linkedin-api-call",
+      "name": "LinkedIn API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1800, 200],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "linkedin-oauth-credential",
+          "name": "LinkedIn OAuth2 API"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Post to LinkedIn API"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "number": [
+                  {
+                    "value1": "={{$json.statusCode}}",
+                    "operation": "equals",
+                    "value2": 201
+                  }
+                ]
+              },
+              "renameOutput": "success",
+              "outputKey": "success"
+            },
+            {
+              "conditions": {
+                "number": [
+                  {
+                    "value1": "={{$json.statusCode}}",
+                    "operation": "notEquals",
+                    "value2": 201
+                  }
+                ]
+              },
+              "renameOutput": "error",
+              "outputKey": "error"
+            }
+          ]
+        }
+      },
+      "id": "check-response",
+      "name": "Check Response",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [2000, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract LinkedIn post ID from response\nconst response = $json;\nconst originalData = $json._originalData || $input.first().json;\n\n// Get LinkedIn post ID from different response formats\nlet linkedinPostId;\nif (response.id) {\n  linkedinPostId = response.id;\n} else if (response.headers && response.headers['x-linkedin-id']) {\n  linkedinPostId = response.headers['x-linkedin-id'];\n} else {\n  linkedinPostId = 'unknown';\n}\n\nreturn [{\n  json: {\n    postId: originalData.postId,\n    linkedinPostId: linkedinPostId,\n    platform: originalData.platform,\n    content: originalData.content,\n    scheduledTime: originalData.scheduledTime,\n    postedAt: new Date().toISOString(),\n    status: 'success',\n    attempts: (originalData.attempts || 0) + 1,\n    response: {\n      statusCode: $json.statusCode,\n      body: $json.body\n    }\n  }\n}];"
+      },
+      "id": "process-success",
+      "name": "Process Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract error information\nconst originalData = $json._originalData || $input.first().json;\n\nlet errorMessage = 'Unknown error';\nlet errorCode = 'UNKNOWN';\n\nif ($json.body && $json.body.message) {\n  errorMessage = $json.body.message;\n  errorCode = $json.body.errorCode || 'API_ERROR';\n} else if ($json.body && $json.body.error) {\n  errorMessage = $json.body.error;\n  errorCode = $json.body.status || 'API_ERROR';\n} else if ($json.error) {\n  errorMessage = $json.error.message;\n  errorCode = $json.error.code || 'REQUEST_ERROR';\n}\n\n// Increment attempts\nconst attempts = (originalData.attempts || 0) + 1;\nconst maxRetries = 3;\n\nreturn [{\n  json: {\n    postId: originalData.postId,\n    platform: originalData.platform,\n    content: originalData.content,\n    scheduledTime: originalData.scheduledTime,\n    failedAt: new Date().toISOString(),\n    status: attempts < maxRetries ? 'retry' : 'failed',\n    attempts: attempts,\n    maxRetries: maxRetries,\n    error: {\n      message: errorMessage,\n      code: errorCode,\n      statusCode: $json.statusCode,\n      details: $json.body || $json\n    },\n    retryAt: attempts < maxRetries ? new Date(Date.now() + 300000).toISOString() : null // Retry in 5 minutes\n  }\n}];"
+      },
+      "id": "process-error",
+      "name": "Process Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "equals",
+              "value2": "retry"
+            }
+          ]
+        }
+      },
+      "id": "should-retry",
+      "name": "Should Retry?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2400, 300]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "minutes"
+      },
+      "id": "retry-wait",
+      "name": "Retry Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2600, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reset status to pending for retry\n$json.status = 'pending';\n\nreturn [{ json: $json }];"
+      },
+      "id": "reset-for-retry",
+      "name": "Reset for Retry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2800, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "fileName": "=linkedin-posts-log.csv",
+        "fileFormat": "csv",
+        "options": {
+          "headerRow": "alwaysWrite"
+        }
+      },
+      "id": "write-log",
+      "name": "Write to Log",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [3000, 200],
+      "notesInFlow": true,
+      "notes": "Log all posting attempts"
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileName": "=linkedin-posts-log.csv",
+        "fileContent": "postId,linkedinPostId,platform,content,scheduledTime,postedAt,failedAt,status,attempts,errorMessage,errorCode"
+      },
+      "id": "create-log-file",
+      "name": "Create Log File",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [3000, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{{\n  \"success\": true,\n  \"message\": \"Post processed\",\n  \"postId\": $json.postId,\n  \"status\": $json.status,\n  \"linkedinPostId\": $json.linkedinPostId || null,\n  \"attempts\": $json.attempts\n}}}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [3200, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format log entry\nconst item = $input.first().json;\n\nreturn [{\n  json: {\n    postId: item.postId || '',\n    linkedinPostId: item.linkedinPostId || '',\n    platform: item.platform || 'linkedin',\n    content: (item.content || '').replace(/,/g, ';').replace(/\\n/g, ' ').substring(0, 200),\n    scheduledTime: item.scheduledTime || '',\n    postedAt: item.postedAt || '',\n    failedAt: item.failedAt || '',\n    status: item.status || '',\n    attempts: item.attempts || 0,\n    errorMessage: (item.error?.message || '').replace(/,/g, ';'),\n    errorCode: item.error?.code || ''\n  }\n}];"
+      },
+      "id": "format-log-entry",
+      "name": "Format Log Entry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2800, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.isWebhook}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "is-webhook",
+      "name": "Is Webhook?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3400, 200]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Schedule Dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Dispatch": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Filter Pending Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Pending Posts": {
+      "main": [
+        [
+          {
+            "node": "Check Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Schedule": {
+      "main": [
+        [
+          {
+            "node": "Is Waiting?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Waiting?": {
+      "main": [
+        [
+          {
+            "node": "Split Posts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait For Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For Schedule": {
+      "main": [
+        [
+          {
+            "node": "Check Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Posts": {
+      "main": [
+        [
+          {
+            "node": "Prepare LinkedIn Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare LinkedIn Request": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn API Call": {
+      "main": [
+        [
+          {
+            "node": "Check Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Response": {
+      "main": [
+        [
+          {
+            "node": "Process Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Success": {
+      "main": [
+        [
+          {
+            "node": "Format Log Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Error": {
+      "main": [
+        [
+          {
+            "node": "Format Log Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Log Entry": {
+      "main": [
+        [
+          {
+            "node": "Write to Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Log": {
+      "main": [
+        [
+          {
+            "node": "Is Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Retry?": {
+      "main": [
+        [
+          {
+            "node": "Retry Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Log Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Wait": {
+      "main": [
+        [
+          {
+            "node": "Reset for Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset for Retry": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 2,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}

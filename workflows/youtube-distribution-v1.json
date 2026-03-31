@@ -1,0 +1,674 @@
+{
+  "name": "YouTube Cross-Platform Distribution",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Poll YouTube Every 15 Min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "operation": "search",
+        "resource": "video",
+        "q": "={{$credentials.youtubeApiConfig.channelId}}",
+        "order": "date",
+        "publishedAfter": "={{$workflow.lastExecuted}}"
+      },
+      "id": "youtube-search",
+      "name": "Search New YouTube Videos",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "youtube-oauth",
+          "name": "YouTube OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.items.length}}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-new-videos",
+      "name": "Any New Videos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const video = item;\n  return {\n    json: {\n      videoId: video.id.videoId,\n      title: video.snippet.title,\n      description: video.snippet.description,\n      thumbnail: video.snippet.thumbnails.high.url,\n      publishedAt: video.snippet.publishedAt,\n      channelTitle: video.snippet.channelTitle,\n      videoUrl: `https://youtube.com/watch?v=${video.id.videoId}`\n    }\n  };\n});"
+      },
+      "id": "extract-video-data",
+      "name": "Extract Video Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "channelId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=🎬 **New YouTube Video Detected!**\n\n📺 *{{ $json.title }}*\n\n📅 Published: {{ $json.publishedAt }}\n\n🔗 Watch: {{ $json.videoUrl }}\n\n---\n🤖 Repurposing for:\n• YouTube Shorts\n• TikTok\n• Instagram Reels\n• Facebook\n\n⏳ Processing... Approval request coming shortly!"
+      },
+      "id": "telegram-notification",
+      "name": "Send Telegram Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate repurposed content for each platform\nconst platforms = {\n  youtubeShorts: {\n    name: 'YouTube Shorts',\n    aspectRatio: '9:16',\n    maxDuration: 60,\n    description: `{{ $json.title }} - Quick tips for project managers! #AI #Productivity`\n  },\n  tiktok: {\n    name: 'TikTok',\n    aspectRatio: '9:16',\n    maxDuration: 60,\n    description: `{{ $json.title }} \\n\\nFull video on YouTube! Link in bio \\n\\n#AI #Productivity #ProjectManagement #TechTips`\n  },\n  instagram: {\n    name: 'Instagram Reels',\n    aspectRatio: '9:16',\n    maxDuration: 90,\n    description: `{{ $json.title }} \\n\\nWatch full video on my YouTube channel! \\n\\n#AI #Productivity #ProjectManager #Automation`\n  },\n  facebook: {\n    name: 'Facebook',\n    aspectRatio: '16:9 or 9:16',\n    maxDuration: 240,\n    description: `{{ $json.title }}\\n\\nCheck out the full video for more AI productivity tips!\\n\\n{{ $json.videoUrl }}\\n\\n#AI #Productivity #Technology`\n  }\n};\n\nconst results = [];\n\nfor (const [key, platform] of Object.entries(platforms)) {\n  results.push({\n    json: {\n      ...$json,\n      platform: platform.name,\n      platformKey: key,\n      aspectRatio: platform.aspectRatio,\n      maxDuration: platform.maxDuration,\n      platformDescription: platform.description\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "generate-platform-content",
+      "name": "Generate Platform Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "channelId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=📱 **Ready to Post to {{ $json.platform }}!**\n\n🎬 Original Video: {{ $json.title }}\n\n📋 Platform Details:\n• Aspect Ratio: {{ $json.aspectRatio }}\n• Max Duration: {{ $json.maxDuration }}s\n\n📝 Caption:\n{{ $json.platformDescription }}\n\n---\n\n**APPROVE THIS POST?**\n✅ Reply \"yes\" to post\n❌ Reply \"no\" to cancel\n\nVideo ID: {{ $json.videoId }}",
+        "additionalFields": {
+          "reply_markup": {
+            "inline_keyboard": [
+              [
+                {
+                  "text": "✅ Approve",
+                  "callback_data": "approve_{{ $json.videoId }}_{{ $json.platformKey }}"
+                },
+                {
+                  "text": "❌ Reject",
+                  "callback_data": "reject_{{ $json.videoId }}_{{ $json.platformKey }}"
+                }
+              ]
+            ]
+          }
+        }
+      },
+      "id": "send-approval-request",
+      "name": "Send Approval Request",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channelId": "YOUR_TELEGRAM_CHAT_ID"
+      },
+      "id": "wait-approval",
+      "name": "Wait for Approval",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "yes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-approval",
+      "name": "Check Approval",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/youtube/v3/videos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "multipart/form-data"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "snippet",
+              "value": "={{ { title: $json.title, description: $json.platformDescription + '\\n\\n' + $json.videoUrl, tags: ['AI', 'Productivity', 'ProjectManagement'], categoryId: '22' } }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ { privacyStatus: 'public', selfDeclaredMadeForKids: false } }}"
+            }
+          ]
+        },
+        "options": {
+          "upload": {
+            "formData": {
+              "fieldName": "media"
+            }
+          }
+        }
+      },
+      "id": "post-youtube-shorts",
+      "name": "Post YouTube Shorts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        100
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "youtube-oauth",
+          "name": "YouTube OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "=✅ **Posted to YouTube Shorts!**\n\n🎬 {{ $json.title }}\n\n🔗 Original: {{ $json.videoUrl }}"
+      },
+      "id": "youtube-success",
+      "name": "YouTube Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2440,
+        100
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://open.tiktokapis.com/v2/publish/",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "tikTokOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "video_url",
+              "value": "={{ $json.videoUrl }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.platformDescription }}"
+            }
+          ]
+        }
+      },
+      "id": "post-tiktok",
+      "name": "Post TikTok",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        200
+      ],
+      "credentials": {
+        "tikTokOAuth2Api": {
+          "id": "tiktok-oauth",
+          "name": "TikTok OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "=✅ **Posted to TikTok!**\n\n🎬 {{ $json.title }}\n\n🔗 Original: {{ $json.videoUrl }}"
+      },
+      "id": "tiktok-success",
+      "name": "TikTok Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2440,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v18.0/YOUR_INSTAGRAM_BUSINESS_ACCOUNT_ID/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "metaOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "video_url",
+              "value": "={{ $json.videoUrl }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.platformDescription }}"
+            }
+          ]
+        }
+      },
+      "id": "post-instagram",
+      "name": "Post Instagram Reel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        300
+      ],
+      "credentials": {
+        "metaOAuth2Api": {
+          "id": "meta-oauth",
+          "name": "Meta OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "=✅ **Posted to Instagram Reels!**\n\n🎬 {{ $json.title }}\n\n🔗 Original: {{ $json.videoUrl }}"
+      },
+      "id": "instagram-success",
+      "name": "Instagram Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2440,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v18.0/YOUR_FACEBOOK_PAGE_ID/videos",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "metaOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file_url",
+              "value": "={{ $json.videoUrl }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $json.platformDescription }}"
+            }
+          ]
+        }
+      },
+      "id": "post-facebook",
+      "name": "Post Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        400
+      ],
+      "credentials": {
+        "metaOAuth2Api": {
+          "id": "meta-oauth",
+          "name": "Meta OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "=✅ **Posted to Facebook!**\n\n🎬 {{ $json.title }}\n\n🔗 Original: {{ $json.videoUrl }}"
+      },
+      "id": "facebook-success",
+      "name": "Facebook Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2440,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channelId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=❌ **Post Rejected**\n\n🎬 {{ $json.title }}\n📱 Platform: {{ $json.platform }}\n\nNo action taken. You can manually post from the original video: {{ $json.videoUrl }}"
+      },
+      "id": "rejection-notification",
+      "name": "Send Rejection",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2220,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Poll YouTube Every 15 Min": {
+      "main": [
+        [
+          {
+            "node": "Search New YouTube Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search New YouTube Videos": {
+      "main": [
+        [
+          {
+            "node": "Any New Videos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any New Videos?": {
+      "main": [
+        [
+          {
+            "node": "Extract Video Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Poll YouTube Every 15 Min",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Video Data": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Notification": {
+      "main": [
+        [
+          {
+            "node": "Generate Platform Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Platform Content": {
+      "main": [
+        [
+          {
+            "node": "Send Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Wait for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Approval": {
+      "main": [
+        [
+          {
+            "node": "Check Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Approval": {
+      "main": [
+        [
+          {
+            "node": "Post YouTube Shorts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post YouTube Shorts": {
+      "main": [
+        [
+          {
+            "node": "YouTube Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post TikTok": {
+      "main": [
+        [
+          {
+            "node": "TikTok Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Instagram Reel": {
+      "main": [
+        [
+          {
+            "node": "Instagram Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Facebook": {
+      "main": [
+        [
+          {
+            "node": "Facebook Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "YouTube",
+      "id": "1"
+    },
+    {
+      "name": "Automation",
+      "id": "2"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-19T12:45:00.000Z",
+  "versionId": "1"
+}

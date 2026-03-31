@@ -1,0 +1,128 @@
+{
+  "title": "LinkedIn Scheduler - Example Payloads",
+  "description": "Copy-paste these examples for quick testing",
+  "examples": [
+    {
+      "name": "Simple Text Post",
+      "description": "Basic text post with hashtags",
+      "payload": {
+        "content": "Excited to announce our new product launch! 🚀\n\nAfter months of hard work, we're finally ready to share it with the world. This represents a huge step forward for our team.\n\n#innovation #startup #productlaunch #tech",
+        "scheduledTime": "2024-12-31T10:00:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Industry Insights",
+      "description": "Thought leadership content",
+      "payload": {
+        "content": "5 AI Trends That Will Define 2025:\n\n1. 🤖 Generative AI in Production\n2. 📊 AI-Powered Analytics\n3. 🛡️ AI Governance & Compliance\n4. 🌐 Multimodal AI Systems\n5. 🔒 Privacy-Preserving AI\n\nWhich one are you most excited about?\n\n#AI #technology #trends #innovation #futureofwork",
+        "scheduledTime": "2024-12-31T14:00:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Job Announcement",
+      "description": "Hiring announcement post",
+      "payload": {
+        "content": "🎉 We're Hiring!\n\nWe're looking for a talented Senior Developer to join our growing team.\n\n📍 Remote-first\n💸 Competitive salary + equity\n📈 Growth opportunities\n🏥 Health benefits\n\nIf you're passionate about building great products, we'd love to hear from you!\n\nApply here: https://example.com/careers\n\n#hiring #remotejobs #developer #techjobs #careeropportunity",
+        "scheduledTime": "2024-12-31T09:00:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Behind the Scenes",
+      "description": "Company culture post",
+      "payload": {
+        "content": "Behind the scenes at our team retreat! 🏕️\n\nWe believe that great work comes from great relationships. That's why we invest time in connecting as a team - not just on work, but on life, dreams, and everything in between.\n\nGrateful for this amazing crew! 💙\n\n#team #culture #companyretreat #worklifebalance #teambuilding",
+        "scheduledTime": "2024-12-31T16:00:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Multiple Posts - Day in the Life",
+      "description": "Schedule multiple posts for a series",
+      "payload": {
+        "posts": [
+          {
+            "content": "☀️ Morning routine: 3 things successful leaders do before 9 AM\n\n1. Review goals for the day\n2. Exercise or meditate\n3. Tackle the hardest task first\n\n#productivity #leadership #morningroutine",
+            "scheduledTime": "2024-12-31T08:00:00Z",
+            "platform": "linkedin"
+          },
+          {
+            "content": "💡 Midday wisdom: The best time to make important decisions is when you have the most energy.\n\nFor many, that's late morning. Know your peak hours and schedule accordingly.\n\n#productivity #decisionmaking #timemanagement",
+            "scheduledTime": "2024-12-31T12:00:00Z",
+            "platform": "linkedin"
+          },
+          {
+            "content": "🌙 Evening reflection: What went well today? What could be better?\n\nTaking 5 minutes to reflect can dramatically improve your growth and performance over time.\n\n#selfimprovement #reflection #growthmindset",
+            "scheduledTime": "2024-12-31T18:00:00Z",
+            "platform": "linkedin"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Case Study Success Story",
+      "description": "Customer success story",
+      "payload": {
+        "content": "Case Study: How Company X Increased Revenue by 300% Using Our Platform\n\nThe Challenge:\n- Manual processes taking 40+ hours/week\n- Inconsistent data across teams\n- Delayed decision-making\n\nThe Solution:\n- Automated workflows\n- Real-time dashboards\n- Integrated data pipelines\n\nThe Results:\n✅ 300% revenue increase\n✅ 90% time saved on manual tasks\n✅ 100% data accuracy\n\nRead the full story: [Link]\n\n#casestudy #successstory #automation #businessgrowth",
+        "scheduledTime": "2024-12-31T11:00:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Question/Engagement Post",
+      "description": "Drive engagement with a question",
+      "payload": {
+        "content": "What's the best career advice you've ever received?\n\nMine was: 'Don't wait for the perfect opportunity. Create it.'\n\nDrop your best advice in the comments! 👇\n\n#careeradvice #professionaldevelopment #leadership",
+        "scheduledTime": "2024-12-31T15:00:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Poll/Survey Style",
+      "description": "Engage audience with choices",
+      "payload": {
+        "content": "Quick poll: What's your biggest productivity challenge?\n\n🔸 Too many meetings\n🔸 Constant interruptions\n🔸 Procrastination\n🔸 Lack of focus\n🔸 Other (comment below!)\n\n#productivity #worklife #poll #engagement",
+        "scheduledTime": "2024-12-31T13:00:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Industry News Commentary",
+      "description": "React to industry news",
+      "payload": {
+        "content": "Just read about [Recent Industry News] - here are my thoughts:\n\nThis development is significant because:\n1. It signals a shift in market dynamics\n2. It opens new opportunities for innovation\n3. It impacts how we approach X, Y, Z\n\nThe companies that adapt fastest will win. 🎯\n\nWhat do you think?\n\n#industrynews #commentary #insights #trends",
+        "scheduledTime": "2024-12-31T17:00:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Product Feature Announcement",
+      "description": "New feature launch",
+      "payload": {
+        "content": "🚀 New Feature Alert!\n\nIntroducing [Feature Name] - the tool you've been asking for!\n\nWhat it does:\n• Solves [Problem]\n• Saves [X] hours per week\n• Integrates with [Other Tools]\n\nAvailable now for all Pro users! ✨\n\nTry it: [Link]\n\n#productlaunch #newfeature #update #productivity",
+        "scheduledTime": "2024-12-31T10:30:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Weekend Reading List",
+      "description": "Curated content for weekend",
+      "payload": {
+        "content": "📚 Weekend Reading List\n\nHere's what I'm reading this weekend:\n\n1. [Article/Book Title]\n   Why: Key insight it provides\n\n2. [Article/Book Title]\n   Why: How it applies to [Topic]\n\n3. [Article/Book Title]\n   Why: My biggest takeaway\n\nWhat's on your reading list? 👇\n\n#reading #learning #bookrecommendations #weekendreading",
+        "scheduledTime": "2024-12-31T09:00:00Z",
+        "platform": "linkedin"
+      }
+    },
+    {
+      "name": "Milestone Celebration",
+      "description": "Company or personal milestone",
+      "payload": {
+        "content": "🎉 We hit a major milestone!\n\n[Company Name] just reached [Achievement]!\n\nThis wouldn't be possible without:\n• Our incredible team\n• Our amazing customers\n• Our supportive community\n\nThank you all for being part of this journey! 💙\n\n#milestone #celebration #gratitude #growth",
+        "scheduledTime": "2024-12-31T11:00:00Z",
+        "platform": "linkedin"
+      }
+    }
+  ]
+}

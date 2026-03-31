@@ -1,0 +1,47 @@
+{
+  "assetId": "ai-cv-reel-2026-03-25",
+  "title": "3 AI CV fixes that get interviews faster",
+  "summary": "A short-form AI Vision Consulting reel explaining three practical CV fixes job seekers can make today.",
+  "cta": "Join my free WhatsApp community to get daily AI prompts, tools, and strategies.",
+  "keywords": [
+    "AI CV tips",
+    "job search",
+    "CV optimisation",
+    "AI Vision Consulting"
+  ],
+  "hashtags": [
+    "#AI",
+    "#JobSearch",
+    "#CVTips",
+    "#AIVisionConsulting"
+  ],
+  "videoPath": "C:\\Users\\ericc\\Downloads\\clawd-aivision-live-fix-stage\\out\\cv-elevenlabs-preview.mp4",
+  "videoUrl": "",
+  "coverImagePath": "",
+  "youtube": {
+    "enabled": true,
+    "title": "3 AI CV fixes that get interviews faster | AI Vision Consulting",
+    "description": "Three practical AI-powered CV fixes that help you stand out faster.",
+    "tags": [
+      "AI CV tips",
+      "job search",
+      "career growth",
+      "AI Vision Consulting"
+    ],
+    "privacyStatus": "private",
+    "categoryId": "22"
+  },
+  "facebook": {
+    "enabled": true,
+    "title": "3 AI CV fixes that get interviews faster",
+    "description": "Review copy for AI Vision Consulting.",
+    "pageId": "YOUR_FACEBOOK_PAGE_ID",
+    "preferRemoteFile": false
+  },
+  "notify": {
+    "telegram": {
+      "enabled": true,
+      "chatId": "YOUR_TELEGRAM_CHAT_ID"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "assetId": "promotion-energy-v5",
+  "title": "AI Promotion Energy - Workflow System",
+  "summary": "AI won't steal your job, but the person who learns it will take your promotion. Here is a simple workflow to become 'that person' in your team using Claude and Notion.",
+  "cta": "Comment 'PROMOTION' for the exact template.",
+  "hashtags": ["#AI", "#Productivity", "#CareerGrowth", "#AIVision"],
+  "videoPath": "C:\\Users\\ericc\\clawd\\remotion-studio\\aivision-slides\\out\\v5_promotion_energy.mp4",
+  "youtube": {
+    "enabled": false,
+    "privacyStatus": "private"
+  },
+  "facebook": {
+    "enabled": false
+  },
+  "notify": {
+    "telegram": {
+      "enabled": false,
+      "chatId": "7887597517"
+    }
+  }
+}
